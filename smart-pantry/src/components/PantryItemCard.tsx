@@ -9,7 +9,7 @@ type PantryItemCardProps = {
 
 export function PantryItemCard({ item }: PantryItemCardProps) {
     return(
-        <View className="mb-3 rounded-2xl border border-slate-200 bg-white p-4">
+        <View className="rounded-2xl border border-slate-200 bg-white p-4">
       <View className="flex-row items-start justify-between gap-3">
         <View className="flex-1">
           <Text className="text-base font-bold text-slate-900">

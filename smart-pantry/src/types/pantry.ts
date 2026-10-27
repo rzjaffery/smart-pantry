@@ -6,6 +6,8 @@ export const PANTRY_LOCATIONS = [
 
 export type PantryLocation = (typeof PANTRY_LOCATIONS)[number];
 
+export type PantryOutcome = "consumed" | "wasted";
+
 export type ExpiryStatus = "expired" | "today" | "soon" | "fresh";
 
 export interface PantryItem{
@@ -27,3 +29,8 @@ export type PantryListRow = | {
     item: PantryItem;
 }
 
+export interface PantryHistoryEntry {
+    item: PantryItem;
+    outcome: PantryOutcome;
+    completedAt: string;
+}

@@ -11,47 +11,75 @@ import {
     type PropsWithChildren,
 } from "react";
 
-import {
-    PANTRY_LOCATIONS,
-    type PantryItem,
-} from "@/types/pantry";
+import { PANTRY_LOCATIONS } from "../types/pantry";
+import type {
+    PantryHistoryEntry,
+    PantryItem,
+    PantryOutcome,
+} from "../types/pantry";
+
+const STORAGE_KEY = "@smart-pantry/pantry-items";
+
+type PantrySnapshot = {
+    items: PantryItem[];
+    history: PantryHistoryEntry[];
+};
 
 type NewPantryItem = Omit<PantryItem, "id">;
 
 type PantryContextValue = {
     items: PantryItem[];
+    history: PantryHistoryEntry[];
     isLoading: boolean;
     storageError: string | null;
     addItem: (item: NewPantryItem) => Promise<void>;
+    completeItem: (
+        id: string,
+        outcome: PantryOutcome,
+    ) => Promise<void>;
 };
-
-const STORAGE_KEY = "@smart-pantry/pantry-items";
 
 const PantryContext = createContext<
     PantryContextValue | undefined
 >(undefined);
 
-function isPantryItem(value: unknown): value is PantryItem {
-    if (typeof value !== "object" || value === null) {
-        return false;
-    }
+function isRecord(
+    value: unknown,
+): value is Record<string, unknown> {
+    return typeof value === "object" && value !== null;
+}
 
-    const item = value as Record<string, unknown>;
+function isPantryItem(value: unknown): value is PantryItem {
+    if (!isRecord(value)) return false;
 
     return (
-        typeof item.id === "string" &&
-        typeof item.name === "string" &&
-        item.name.trim().length > 0 &&
-        typeof item.quantity === "number" &&
-        Number.isFinite(item.quantity) &&
-        item.quantity > 0 &&
-        typeof item.unit === "string" &&
-        typeof item.location === "string" &&
+        typeof value.id === "string" &&
+        typeof value.name === "string" &&
+        value.name.trim().length > 0 &&
+        typeof value.quantity === "number" &&
+        Number.isFinite(value.quantity) &&
+        value.quantity > 0 &&
+        typeof value.unit === "string" &&
+        typeof value.location === "string" &&
         (PANTRY_LOCATIONS as readonly string[]).includes(
-            item.location,
+            value.location,
         ) &&
-        typeof item.expiryDate === "string" &&
-        /^\d{4}-\d{2}-\d{2}$/.test(item.expiryDate)
+        typeof value.expiryDate === "string" &&
+        /^\d{4}-\d{2}-\d{2}$/.test(value.expiryDate)
+    );
+}
+
+function isHistoryEntry(
+    value: unknown,
+): value is PantryHistoryEntry {
+    if (!isRecord(value)) return false;
+
+    return (
+        isPantryItem(value.item) &&
+        (value.outcome === "consumed" ||
+            value.outcome === "wasted") &&
+        typeof value.completedAt === "string" &&
+        !Number.isNaN(Date.parse(value.completedAt))
     );
 }
 
@@ -59,42 +87,81 @@ export function PantryProvider({
                                    children,
                                }: PropsWithChildren) {
     const [items, setItems] = useState<PantryItem[]>([]);
+    const [history, setHistory] = useState<PantryHistoryEntry[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [storageError, setStorageError] = useState<string | null>(
         null,
     );
 
-    // Keeps the latest committed items available to addItem.
     const itemsRef = useRef<PantryItem[]>([]);
+    const historyRef = useRef<PantryHistoryEntry[]>([]);
+    const storageReadyRef = useRef(false);
+
+    // Serialize writes so rapid actions cannot overwrite a newer
+    // pantry snapshot with an older one.
+    const mutationQueueRef = useRef<Promise<void>>(
+        Promise.resolve(),
+    );
 
     useEffect(() => {
         let mounted = true;
 
         async function loadItems() {
             try {
-                const storedValue = await AsyncStorage.getItem(STORAGE_KEY);
+                const storedValue =
+                    await AsyncStorage.getItem(STORAGE_KEY);
 
-                const parsed: unknown =
-                    storedValue === null ? [] : JSON.parse(storedValue);
+                let snapshot: PantrySnapshot = {
+                    items: [],
+                    history: [],
+                };
 
-                if (
-                    !Array.isArray(parsed) ||
-                    !parsed.every(isPantryItem)
-                ) {
-                    throw new Error("Saved pantry data has an invalid format.");
+                if (storedValue !== null) {
+                    const parsed: unknown = JSON.parse(storedValue);
+
+                    // Migration: the earlier app stored a plain array.
+                    if (Array.isArray(parsed)) {
+                        if (!parsed.every(isPantryItem)) {
+                            throw new Error("Invalid saved pantry items.");
+                        }
+
+                        snapshot = {
+                            items: parsed,
+                            history: [],
+                        };
+                    } else if (
+                        isRecord(parsed) &&
+                        Array.isArray(parsed.items) &&
+                        Array.isArray(parsed.history) &&
+                        parsed.items.every(isPantryItem) &&
+                        parsed.history.every(isHistoryEntry)
+                    ) {
+                        snapshot = {
+                            items: parsed.items,
+                            history: parsed.history,
+                        };
+                    } else {
+                        throw new Error("Invalid saved pantry data.");
+                    }
                 }
 
                 if (mounted) {
-                    itemsRef.current = parsed;
-                    setItems(parsed);
+                    itemsRef.current = snapshot.items;
+                    historyRef.current = snapshot.history;
+                    storageReadyRef.current = true;
+
+                    setItems(snapshot.items);
+                    setHistory(snapshot.history);
                     setStorageError(null);
                 }
             } catch (error) {
-                console.error("Failed to load pantry items:", error);
+                console.error("Failed to load pantry:", error);
 
                 if (mounted) {
+                    // Protect any saved data we could not read.
+                    storageReadyRef.current = false;
                     setStorageError(
-                        "We couldn't load your saved pantry items. Adding an item may replace unreadable saved data.",
+                        "We couldn't read your saved pantry. Your data is protected, and changes are temporarily disabled.",
                     );
                 }
             } finally {
@@ -111,52 +178,126 @@ export function PantryProvider({
         };
     }, []);
 
-    const addItem = useCallback(
-        async (newItem: NewPantryItem) => {
-            if (isLoading) {
-                throw new Error("Your pantry is still loading.");
-            }
+    const persistMutation = useCallback(
+        (
+            buildNext: (
+                currentItems: PantryItem[],
+                currentHistory: PantryHistoryEntry[],
+            ) => PantrySnapshot,
+        ): Promise<void> => {
+            const operation = mutationQueueRef.current.then(
+                async () => {
+                    try {
+                        if (!storageReadyRef.current) {
+                            throw new Error(
+                                "Pantry storage is not ready.",
+                            );
+                        }
 
-            const item: PantryItem = {
-                ...newItem,
-                id: `${Date.now()}-${Math.random()
-                    .toString(36)
-                    .slice(2, 9)}`,
-            };
+                        const next = buildNext(
+                            itemsRef.current,
+                            historyRef.current,
+                        );
 
-            const nextItems = [item, ...itemsRef.current];
+                        // Write one snapshot containing both lists.
+                        await AsyncStorage.setItem(
+                            STORAGE_KEY,
+                            JSON.stringify(next),
+                        );
 
-            try {
-                // Save successfully before updating the visible list.
-                await AsyncStorage.setItem(
-                    STORAGE_KEY,
-                    JSON.stringify(nextItems),
-                );
+                        // Update the visible UI only after saving succeeds.
+                        itemsRef.current = next.items;
+                        historyRef.current = next.history;
 
-                itemsRef.current = nextItems;
-                setItems(nextItems);
-                setStorageError(null);
-            } catch (error) {
-                console.error("Failed to save pantry item:", error);
+                        setItems(next.items);
+                        setHistory(next.history);
+                        setStorageError(null);
+                    } catch (error) {
+                        console.error("Failed to save pantry:", error);
+                        setStorageError(
+                            "Your change couldn't be saved. Please try again.",
+                        );
+                        throw error;
+                    }
+                },
+            );
 
-                setStorageError(
-                    "We couldn't save your item. Please try again.",
-                );
+            // Keep the queue usable even if a previous operation failed.
+            mutationQueueRef.current = operation.then(
+                () => undefined,
+                () => undefined,
+            );
 
-                throw error;
-            }
+            return operation;
         },
-        [isLoading],
+        [],
+    );
+
+    const addItem = useCallback(
+        (newItem: NewPantryItem): Promise<void> =>
+            persistMutation((currentItems, currentHistory) => {
+                const item: PantryItem = {
+                    ...newItem,
+                    id: `${Date.now()}-${Math.random()
+                        .toString(36)
+                        .slice(2, 9)}`,
+                };
+
+                return {
+                    items: [item, ...currentItems],
+                    history: currentHistory,
+                };
+            }),
+        [persistMutation],
+    );
+
+    const completeItem = useCallback(
+        (
+            id: string,
+            outcome: PantryOutcome,
+        ): Promise<void> =>
+            persistMutation((currentItems, currentHistory) => {
+                const item = currentItems.find(
+                    (candidate) => candidate.id === id,
+                );
+
+                if (!item) {
+                    throw new Error("Pantry item was not found.");
+                }
+
+                const entry: PantryHistoryEntry = {
+                    item,
+                    outcome,
+                    completedAt: new Date().toISOString(),
+                };
+
+                return {
+                    items: currentItems.filter(
+                        (candidate) => candidate.id !== id,
+                    ),
+                    history: [entry, ...currentHistory],
+                };
+            }),
+        [persistMutation],
     );
 
     const value = useMemo(
         () => ({
             items,
+            history,
             isLoading,
             storageError,
             addItem,
+            completeItem,
         }),
-        [items, isLoading, storageError, addItem],
+        [
+            items,
+            history,
+            isLoading,
+            storageError,
+            addItem,
+            completeItem,
+        ],
     );
 
     return (

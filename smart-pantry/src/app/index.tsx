@@ -13,6 +13,7 @@ import {
 import {useRouter} from "expo-router";
 import {usePantry} from "@/context/PantryContext";
 import {useMemo} from "react";
+import { SwipeablePantryItem } from "../components/SwipeablePantryItem";
 
 // Temporary demo data. We'll replace this with saved pantry
 // data and user-created items in a later step.
@@ -89,7 +90,13 @@ function buildPantryRows(items: PantryItem[]): PantryListRow[] {
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { items, isLoading, storageError } = usePantry();
+  const {
+    items,
+    history,
+    isLoading,
+    storageError,
+    completeItem,
+  } = usePantry();
 
   const rows = useMemo(
       () => buildPantryRows(items),
@@ -229,7 +236,12 @@ export default function HomeScreen() {
             );
           }
 
-          return <PantryItemCard item={row.item} />;
+          return (
+              <SwipeablePantryItem
+                  item={row.item}
+                  onComplete={completeItem}
+              />
+          );
         }}
         ListEmptyComponent={
           <View className="mt-6 items-center rounded-2xl border border-dashed border-slate-300 bg-white p-8">

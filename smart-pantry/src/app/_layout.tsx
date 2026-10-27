@@ -2,12 +2,15 @@
 import "../../global.css";
 
 import { Stack } from "expo-router";
-import { PantryProvider } from "@/context/PantryContext";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { PantryProvider } from "../context/PantryContext";
 
 export default function RootLayout() {
-  return (
-      <PantryProvider>
-        <Stack screenOptions={{ headerShown: false }} />
-      </PantryProvider>
-  );
+    return (
+        <GestureHandlerRootView style={{ flex: 1 }}>
+            <PantryProvider>
+                <Stack screenOptions={{ headerShown: false }} />
+            </PantryProvider>
+        </GestureHandlerRootView>
+    );
 }
