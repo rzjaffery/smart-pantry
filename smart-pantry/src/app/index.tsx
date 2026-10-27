@@ -15,51 +15,6 @@ import {usePantry} from "@/context/PantryContext";
 import {useMemo} from "react";
 import { SwipeablePantryItem } from "../components/SwipeablePantryItem";
 
-// Temporary demo data. We'll replace this with saved pantry
-// data and user-created items in a later step.
-// const DEMO_ITEMS: PantryItem[] = [
-//   {
-//     id: "milk-1",
-//     name: "Milk",
-//     quantity: 1,
-//     unit: "carton",
-//     location: "Fridge",
-//     expiryDate: addDaysToDateKey(0),
-//   },
-//   {
-//     id: "spinach-1",
-//     name: "Spinach",
-//     quantity: 1,
-//     unit: "bag",
-//     location: "Fridge",
-//     expiryDate: addDaysToDateKey(2),
-//   },
-//   {
-//     id: "yogurt-1",
-//     name: "Yogurt",
-//     quantity: 4,
-//     unit: "cups",
-//     location: "Fridge",
-//     expiryDate: addDaysToDateKey(6),
-//   },
-//   {
-//     id: "rice-1",
-//     name: "Rice",
-//     quantity: 1,
-//     unit: "kg",
-//     location: "Pantry",
-//     expiryDate: addDaysToDateKey(20),
-//   },
-//   {
-//     id: "peas-1",
-//     name: "Frozen peas",
-//     quantity: 1,
-//     unit: "bag",
-//     location: "Freezer",
-//     expiryDate: addDaysToDateKey(45),
-//   },
-// ];
-
 function buildPantryRows(items: PantryItem[]): PantryListRow[] {
   const rows: PantryListRow[] = [];
 
