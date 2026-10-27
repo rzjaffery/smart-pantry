@@ -1,5 +1,5 @@
 
-import {FlatList, Pressable, Text, View} from "react-native";
+import {FlatList, Pressable, Text, View, ActivityIndicator} from "react-native";
 import { PantryItemCard } from "@/components/PantryItemCard";
 import {
   addDaysToDateKey,
@@ -89,7 +89,7 @@ function buildPantryRows(items: PantryItem[]): PantryListRow[] {
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { items } = usePantry();
+  const { items, isLoading, storageError } = usePantry();
 
   const rows = useMemo(
       () => buildPantryRows(items),
@@ -136,6 +136,18 @@ export default function HomeScreen() {
     },
   ];
 
+  if (isLoading) {
+    return (
+        <View className="flex-1 items-center justify-center bg-slate-50">
+          <ActivityIndicator size="large" color="#047857" />
+
+          <Text className="mt-3 text-base text-slate-600">
+            Loading your pantry...
+          </Text>
+        </View>
+    );
+  }
+
   return (
     <View className="flex-1 bg-slate-50">
       <FlatList
@@ -148,6 +160,13 @@ export default function HomeScreen() {
         }}
         ListHeaderComponent={
           <View className="pb-5 pt-4">
+            {storageError ? (
+                <View className="mt-4 rounded-xl bg-amber-50 p-3">
+                  <Text className="text-sm text-amber-900">
+                    {storageError}
+                  </Text>
+                </View>
+            ) : null}
             <Text className="text-xs font-bold uppercase tracking-widest text-emerald-700">
               SMART PANTRY
             </Text>

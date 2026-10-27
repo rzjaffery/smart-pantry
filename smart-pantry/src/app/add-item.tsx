@@ -77,7 +77,7 @@ export default function AddItemScreen() {
     };
 
 
-    const handleSave = () => {
+    const handleSave = async () => {
         const trimmedName = name.trim();
         const trimmedUnit = unit.trim();
         const parsedQuantity = Number(quantity);
@@ -114,16 +114,22 @@ export default function AddItemScreen() {
             );
             return;
         }
+        try {
+            await addItem({
+                name: trimmedName,
+                quantity: parsedQuantity,
+                unit: trimmedUnit,
+                location,
+                expiryDate: expiryDateKey,
+            });
 
-        addItem({
-            name: trimmedName,
-            quantity: parsedQuantity,
-            unit: trimmedUnit,
-            location,
-            expiryDate: expiryDateKey,
-        });
-
-        router.back();
+            router.back();
+        } catch {
+            Alert.alert(
+                "Couldn't save item",
+                "Your pantry item wasn't saved. Please try again.",
+            );
+        }
     };
 
     const expiryDateLabel = formatExpiryDate(toDateKey(expiryDate));
