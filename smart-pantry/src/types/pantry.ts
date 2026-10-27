@@ -1,10 +1,10 @@
-export const PANTRY_LOCATION = [
+export const PANTRY_LOCATIONS = [
     "Fridge",
     "Freezer",
     "Pantry",
 ] as const;
 
-export type PantryLocation = (typeof PANTRY_LOCATION)[number];
+export type PantryLocation = (typeof PANTRY_LOCATIONS)[number];
 
 export type ExpiryStatus = "expired" | "today" | "soon" | "fresh";
 

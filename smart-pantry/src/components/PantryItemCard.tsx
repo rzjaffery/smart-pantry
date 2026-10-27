@@ -1,6 +1,6 @@
 import { Text, View } from "react-native";
-import type { PantryItem } from "../types/pantry";
-import { formatExpiryDate } from "../lib/expiry";
+import type { PantryItem } from "@/types/pantry";
+import { formatExpiryDate } from "@/lib/expiry";
 import { ExpiryBadge } from "./ExpiryBadge";
 
 type PantryItemCardProps = {

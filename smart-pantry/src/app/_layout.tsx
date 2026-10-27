@@ -1,6 +1,13 @@
+
 import "../../global.css";
+
 import { Stack } from "expo-router";
+import { PantryProvider } from "@/context/PantryContext";
 
 export default function RootLayout() {
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return (
+      <PantryProvider>
+        <Stack screenOptions={{ headerShown: false }} />
+      </PantryProvider>
+  );
 }

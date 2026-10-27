@@ -9,7 +9,7 @@ export function toDateKey(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-export function addDaystoDateKey(
+export function addDaysToDateKey(
   days: number,
   from: Date = new Date(),
 ): string {
