@@ -156,13 +156,14 @@ export default function HomeScreen() {
   }
 
   return (
-    <View className="flex-1 bg-slate-50">
+    <View className="flex-auto bg-slate-50">
       <FlatList
         data={rows}
         keyExtractor={(row) => row.key}
         contentContainerStyle={{
           paddingHorizontal: 20,
-          paddingBottom: 36,
+          paddingBottom: 20,
+          paddingTop:40,
           flexGrow: 1,
         }}
         ListHeaderComponent={
@@ -216,6 +217,16 @@ export default function HomeScreen() {
                         + Add item
                       </Text>
                     </Pressable>
+
+              <Pressable
+                  onPress={() => router.push("/history")}
+                  className="mt-3 self-start rounded-xl border border-slate-200 bg-white px-5 py-3"
+              >
+                <Text className="font-semibold text-slate-700">
+                  View activity ({history.length})
+                </Text>
+              </Pressable>
+
             </View>
 
             <Text className="mb-1 mt-6 text-xl font-bold text-slate-900">

@@ -40,8 +40,8 @@ export default function HistoryScreen() {
                 keyExtractor={(entry) => entry.item.id}
                 contentContainerStyle={{
                     paddingHorizontal: 20,
-                    paddingTop: 24,
-                    paddingBottom: 36,
+                    paddingTop: 45,
+                    paddingBottom: 20,
                     flexGrow: 1,
                 }}
                 ListHeaderComponent={
