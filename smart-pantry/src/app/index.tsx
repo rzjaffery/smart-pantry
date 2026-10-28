@@ -200,11 +200,6 @@ export default function HomeScreen() {
                 </View>
               </View>
 
-              <NavigationButton
-                  title="Daily reminders"
-                  subtitle="Manage your expiry reminder time"
-                  onPress={() => router.push("/reminders")}
-              />
             </View>
           </View>
 
