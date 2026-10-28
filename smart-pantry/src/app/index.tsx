@@ -14,7 +14,7 @@ import { useRouter } from "expo-router";
 import { SwipeablePantryItem } from "@/components/SwipeablePantryItem";
 import { usePantry } from "@/context/PantryContext";
 import { daysUntilExpiry } from "@/lib/expiry";
-// import { scheduleTestNotification } from "@/lib/notifications";
+import { scheduleTestNotification } from "@/lib/notifications";
 import {
   PANTRY_LOCATIONS,
   type PantryItem,
@@ -128,31 +128,31 @@ export default function HomeScreen() {
     );
   }
 
-  // const handleTestNotification = async () => {
-  //   try {
-  //     const scheduled = await scheduleTestNotification();
-  //
-  //     if (!scheduled) {
-  //       Alert.alert(
-  //           "Notifications disabled",
-  //           "Enable notifications for Smart Pantry in your device settings, then try again.",
-  //       );
-  //       return;
-  //     }
-  //
-  //     Alert.alert(
-  //         "Test scheduled",
-  //         "A test notification is scheduled for about 10 seconds from now. Close this message and press Home to test it in the background.",
-  //     );
-  //   } catch (error) {
-  //     console.error("Notification test failed:", error);
-  //
-  //     Alert.alert(
-  //         "Notification error",
-  //         "We couldn't schedule the test notification. Check the Expo terminal for details.",
-  //     );
-  //   }
-  // };
+  const handleTestNotification = async () => {
+    try {
+      const scheduled = await scheduleTestNotification();
+
+      if (!scheduled) {
+        Alert.alert(
+            "Notifications disabled",
+            "Enable notifications for Smart Pantry in your device settings, then try again.",
+        );
+        return;
+      }
+
+      Alert.alert(
+          "Test scheduled",
+          "A test notification is scheduled for about 10 seconds from now. Close this message and press Home to test it in the background.",
+      );
+    } catch (error) {
+      console.error("Notification test failed:", error);
+
+      Alert.alert(
+          "Notification error",
+          "We couldn't schedule the test notification. Check the Expo terminal for details.",
+      );
+    }
+  };
 
 
   return (
@@ -254,15 +254,15 @@ export default function HomeScreen() {
                     </Text>
                   </Pressable>
 
-                  {/*<Pressable*/}
-                  {/*    accessibilityRole="button"*/}
-                  {/*    onPress={() => void handleTestNotification()}*/}
-                  {/*    className="rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-3.5"*/}
-                  {/*>*/}
-                  {/*  <Text className="font-semibold text-emerald-800">*/}
-                  {/*    Test reminder*/}
-                  {/*  </Text>*/}
-                  {/*</Pressable>*/}
+                  <Pressable
+                      accessibilityRole="button"
+                      onPress={() => void handleTestNotification()}
+                      className="rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-3.5"
+                  >
+                    <Text className="font-semibold text-emerald-800">
+                      Test reminder
+                    </Text>
+                  </Pressable>
 
                 </View>
 
