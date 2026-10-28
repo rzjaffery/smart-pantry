@@ -214,6 +214,16 @@ export default function HomeScreen() {
                       History ({history.length})
                     </Text>
                   </Pressable>
+
+                  <Pressable
+                      accessibilityRole="button"
+                      onPress={() => router.push("/recipes")}
+                      className="rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-3.5"
+                  >
+                    <Text className="font-semibold text-emerald-800">
+                      Recipes
+                    </Text>
+                  </Pressable>
                 </View>
 
                 {/* Pantry section heading */}
