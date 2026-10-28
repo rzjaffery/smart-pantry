@@ -76,7 +76,7 @@ function NavigationButton({
 
 export default function HomeScreen() {
   const router = useRouter();
-  const {items} = usePantry();
+  const {items, completeItem} = usePantry();
 
   const pantryItems = items ?? [];
 
@@ -267,11 +267,13 @@ export default function HomeScreen() {
                       <View className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
                         {group.items.map((item, index) => (
                             <SwipeablePantryItem
-                                key={item.id ??
-                                    `${group.location}-${item.name}-${index}`}
-                                item={item} onComplete={function (id: string, outcome: PantryOutcome): Promise<void> {
-                              throw new Error("Function not implemented.");
-                            }}                            />
+                                key={
+                                    item.id ??
+                                    `${group.location}-${item.name}-${index}`
+                                }
+                                item={item}
+                                onComplete={completeItem}
+                            />
                         ))}
                       </View>
                     </View>

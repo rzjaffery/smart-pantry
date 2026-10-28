@@ -37,14 +37,16 @@ export function SwipeablePantryItem({
         try {
             await onComplete(item.id, outcome);
             // On success, the item leaves the active list.
-        } catch {
-            setIsSaving(false);
+        } catch (error) {
+        console.error("Pantry item update failed:", error);
 
-            Alert.alert(
-                "Couldn't update item",
-                "Your pantry change could not be saved. Please try again.",
-            );
-        }
+        setIsSaving(false);
+
+        Alert.alert(
+            "Couldn't update item",
+            "Your pantry change could not be saved. Please try again."
+        );
+    }
     };
 
     return (
