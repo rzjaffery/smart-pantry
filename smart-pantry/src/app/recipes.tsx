@@ -361,8 +361,19 @@ export default function RecipesScreen() {
                         ) : null}
                     </View>
                 }
+
                 renderItem={({ item: recipe }) => (
-                    <View className="mb-4 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                    <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={`View recipe details for ${recipe.strMeal}`}
+                        onPress={() =>
+                            router.push({
+                                pathname: "/recipe/[id]",
+                                params: { id: recipe.idMeal },
+                            })
+                        }
+                        className="mb-4 overflow-hidden rounded-2xl border border-slate-200 bg-white"
+                    >
                         {recipe.strMealThumb ? (
                             <Image
                                 source={{ uri: recipe.strMealThumb }}
@@ -383,8 +394,7 @@ export default function RecipesScreen() {
                             </Text>
 
                             <Text className="mt-2 text-sm font-semibold text-emerald-800">
-                                Matches {recipe.matchedIngredients.length}{" "}
-                                expiring{" "}
+                                Matches {recipe.matchedIngredients.length} expiring{" "}
                                 {recipe.matchedIngredients.length === 1
                                     ? "ingredient"
                                     : "ingredients"}
@@ -402,9 +412,17 @@ export default function RecipesScreen() {
                                     </View>
                                 ))}
                             </View>
+
+                            <View className="mt-4 flex-row items-center justify-between border-t border-slate-100 pt-3">
+                                <Text className="font-bold text-emerald-700">
+                                    View recipe
+                                </Text>
+                                <Text className="text-lg text-emerald-700">→</Text>
+                            </View>
                         </View>
-                    </View>
+                    </Pressable>
                 )}
+
                 ListEmptyComponent={
                     <View className="items-center rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-9">
                         <Text className="text-4xl">
