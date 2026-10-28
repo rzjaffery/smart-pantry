@@ -8,6 +8,7 @@ import { usePantry } from "@/context/PantryContext";
 import { daysUntilExpiry } from "@/lib/expiry";
 import { PANTRY_LOCATIONS, PantryOutcome} from "@/types/pantry";
 type ExpiryFilter = "all" | "soon" | "expired" | "later";
+type PantrySort = "expiry" | "name";
 
 function SummaryCard({
                        label,
@@ -82,7 +83,7 @@ export default function HomeScreen() {
   const pantryItems = items ?? [];
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedLocation, setSelectedLocation] = useState<string>("All locations");
-
+    const [sortBy, setSortBy] = useState<PantrySort>("expiry");
     const [expiryFilter, setExpiryFilter] = useState<ExpiryFilter>("all");
 
     const filteredItems = useMemo(() => {
@@ -142,16 +143,37 @@ export default function HomeScreen() {
     };
   }, [pantryItems]);
 
-  const locationGroups = useMemo(
-      () =>
-          PANTRY_LOCATIONS.map((location) => ({
-            location,
-            items: filteredItems.filter(
-                (item) => item.location === location
-            ),
-          })).filter((group) => group.items.length > 0),
-      [filteredItems]
-  );
+    const locationGroups = useMemo(
+        () =>
+            PANTRY_LOCATIONS.map((location) => {
+                const groupItems = filteredItems.filter(
+                    (item) => item.location === location
+                );
+
+                const sortedItems = [...groupItems].sort((a, b) => {
+                    if (sortBy === "name") {
+                        return a.name.localeCompare(b.name);
+                    }
+
+                    const expiryDifference =
+                        daysUntilExpiry(a.expiryDate) -
+                        daysUntilExpiry(b.expiryDate);
+
+                    if (expiryDifference !== 0) {
+                        return expiryDifference;
+                    }
+
+                    // If expiry dates match, sort alphabetically.
+                    return a.name.localeCompare(b.name);
+                });
+
+                return {
+                    location,
+                    items: sortedItems,
+                };
+            }).filter((group) => group.items.length > 0),
+        [filteredItems, sortBy]
+    );
 
   return (
       <SafeAreaView
@@ -285,6 +307,48 @@ export default function HomeScreen() {
                         </Text>
                     </Pressable>
                 )}
+            </View>
+
+            {/* Sorting options */}
+            <View>
+                <Text className="text-sm font-bold text-slate-800">
+                    Sort items by
+                </Text>
+
+                <View className="mt-2 flex-row flex-wrap gap-2">
+                    {[
+                        { value: "expiry", label: "Expiry: soonest first" },
+                        { value: "name", label: "Name: A–Z" },
+                    ].map((option) => {
+                        const selected = sortBy === option.value;
+
+                        return (
+                            <Pressable
+                                key={option.value}
+                                accessibilityRole="button"
+                                accessibilityState={{ selected }}
+                                onPress={() =>
+                                    setSortBy(option.value as PantrySort)
+                                }
+                                className={`rounded-full border px-3 py-2 ${
+                                    selected
+                                        ? "border-emerald-700 bg-emerald-700"
+                                        : "border-slate-200 bg-white"
+                                }`}
+                            >
+                                <Text
+                                    className={`text-sm font-semibold ${
+                                        selected
+                                            ? "text-white"
+                                            : "text-slate-700"
+                                    }`}
+                                >
+                                    {option.label}
+                                </Text>
+                            </Pressable>
+                        );
+                    })}
+                </View>
             </View>
 
             <View className="mt-5 gap-4">
