@@ -1,5 +1,5 @@
-import { useMemo } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { useMemo, useState } from "react";
+import {Pressable,ScrollView,Text,TextInput,View,} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 
@@ -7,6 +7,7 @@ import { SwipeablePantryItem } from "../components/SwipeablePantryItem";
 import { usePantry } from "@/context/PantryContext";
 import { daysUntilExpiry } from "@/lib/expiry";
 import { PANTRY_LOCATIONS, PantryOutcome} from "@/types/pantry";
+type ExpiryFilter = "all" | "soon" | "expired" | "later";
 
 function SummaryCard({
                        label,
@@ -79,6 +80,46 @@ export default function HomeScreen() {
   const {items, completeItem} = usePantry();
 
   const pantryItems = items ?? [];
+    const [searchQuery, setSearchQuery] = useState("");
+    const [selectedLocation, setSelectedLocation] = useState<string>("All locations");
+
+    const [expiryFilter, setExpiryFilter] = useState<ExpiryFilter>("all");
+
+    const filteredItems = useMemo(() => {
+        const query = searchQuery.trim().toLowerCase();
+
+        return pantryItems.filter((item) => {
+            const matchesSearch =
+                item.name.toLowerCase().includes(query);
+
+            const matchesLocation =
+                selectedLocation === "All locations" ||
+                item.location === selectedLocation;
+
+            const daysLeft = daysUntilExpiry(item.expiryDate);
+
+            let matchesExpiry = true;
+
+            if (expiryFilter === "soon") {
+                matchesExpiry = daysLeft >= 0 && daysLeft <= 3;
+            } else if (expiryFilter === "expired") {
+                matchesExpiry = daysLeft < 0;
+            } else if (expiryFilter === "later") {
+                matchesExpiry = daysLeft > 3;
+            }
+
+            return (
+                matchesSearch &&
+                matchesLocation &&
+                matchesExpiry
+            );
+        });
+    }, [
+        pantryItems,
+        searchQuery,
+        selectedLocation,
+        expiryFilter,
+    ]);
 
   const summary = useMemo(() => {
     let expired = 0;
@@ -105,11 +146,11 @@ export default function HomeScreen() {
       () =>
           PANTRY_LOCATIONS.map((location) => ({
             location,
-            items: pantryItems.filter(
+            items: filteredItems.filter(
                 (item) => item.location === location
             ),
           })).filter((group) => group.items.length > 0),
-      [pantryItems]
+      [filteredItems]
   );
 
   return (
@@ -220,6 +261,136 @@ export default function HomeScreen() {
             </Text>
           </View>
 
+            <View className="mt-4 flex-row items-center rounded-xl border border-slate-200 bg-white px-4">
+                <TextInput
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                    placeholder="Search pantry items..."
+                    placeholderTextColor="#64748b"
+                    autoCapitalize="none"
+                    returnKeyType="search"
+                    accessibilityLabel="Search pantry items by name"
+                    className="min-h-12 flex-1 py-3 text-base text-slate-900"
+                />
+
+                {searchQuery.length > 0 && (
+                    <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel="Clear search"
+                        onPress={() => setSearchQuery("")}
+                        className="ml-2 rounded-lg px-2 py-2"
+                    >
+                        <Text className="font-semibold text-emerald-700">
+                            Clear
+                        </Text>
+                    </Pressable>
+                )}
+            </View>
+
+            <View className="mt-5 gap-4">
+                {/* Storage location filter */}
+                <View>
+                    <Text className="text-sm font-bold text-slate-800">
+                        Storage location
+                    </Text>
+
+                    <View className="mt-2 flex-row flex-wrap gap-2">
+                        {["All locations", ...PANTRY_LOCATIONS].map(
+                            (location) => {
+                                const selected = selectedLocation === location;
+
+                                return (
+                                    <Pressable
+                                        key={location}
+                                        accessibilityRole="button"
+                                        accessibilityState={{ selected }}
+                                        onPress={() => setSelectedLocation(location)}
+                                        className={`rounded-full border px-3 py-2 ${
+                                            selected
+                                                ? "border-emerald-700 bg-emerald-700"
+                                                : "border-slate-200 bg-white"
+                                        }`}
+                                    >
+                                        <Text
+                                            className={`text-sm font-semibold ${
+                                                selected
+                                                    ? "text-white"
+                                                    : "text-slate-700"
+                                            }`}
+                                        >
+                                            {location}
+                                        </Text>
+                                    </Pressable>
+                                );
+                            }
+                        )}
+                    </View>
+                </View>
+
+                {/* Expiry filter */}
+                <View>
+                    <Text className="text-sm font-bold text-slate-800">
+                        Expiry status
+                    </Text>
+
+                    <View className="mt-2 flex-row flex-wrap gap-2">
+                        {[
+                            { value: "all", label: "All items" },
+                            { value: "soon", label: "Expiring soon" },
+                            { value: "expired", label: "Expired" },
+                            { value: "later", label: "Later" },
+                        ].map((option) => {
+                            const selected = expiryFilter === option.value;
+
+                            return (
+                                <Pressable
+                                    key={option.value}
+                                    accessibilityRole="button"
+                                    accessibilityState={{ selected }}
+                                    onPress={() =>
+                                        setExpiryFilter(
+                                            option.value as ExpiryFilter
+                                        )
+                                    }
+                                    className={`rounded-full border px-3 py-2 ${
+                                        selected
+                                            ? "border-emerald-700 bg-emerald-700"
+                                            : "border-slate-200 bg-white"
+                                    }`}
+                                >
+                                    <Text
+                                        className={`text-sm font-semibold ${
+                                            selected
+                                                ? "text-white"
+                                                : "text-slate-700"
+                                        }`}
+                                    >
+                                        {option.label}
+                                    </Text>
+                                </Pressable>
+                            );
+                        })}
+                    </View>
+                </View>
+
+                {/* Reset filters */}
+                {(selectedLocation !== "All locations" ||
+                    expiryFilter !== "all") && (
+                    <Pressable
+                        accessibilityRole="button"
+                        onPress={() => {
+                            setSelectedLocation("All locations");
+                            setExpiryFilter("all");
+                        }}
+                        className="self-start rounded-lg py-1"
+                    >
+                        <Text className="font-semibold text-emerald-700">
+                            Reset filters
+                        </Text>
+                    </Pressable>
+                )}
+            </View>
+
           {pantryItems.length === 0 ? (
               <View className="mt-4 items-center rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-8">
                 <Text className="text-base font-bold text-slate-800">
@@ -238,6 +409,21 @@ export default function HomeScreen() {
                   <Text className="font-bold text-white">
                     Add your first item
                   </Text>
+                </Pressable>
+              </View>
+          )  : filteredItems.length === 0 ? (
+              <View className="mt-4 items-center rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-8">
+                  <Text className="text-base font-bold text-slate-800">
+                      No matching items
+                  </Text>
+
+                  <Text className="mt-2 text-center text-sm leading-5 text-slate-500">
+                      Try another name or clear your search to see all pantry items.
+                  </Text>
+                  <Pressable accessibilityRole="button" onPress={() => setSearchQuery("")} className="mt-4 rounded-xl bg-emerald-700 px-5 py-3">
+                    <Text className="font-bold text-white">
+                        Clear search
+                    </Text>
                 </Pressable>
               </View>
           ) : (
