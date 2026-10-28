@@ -33,6 +33,11 @@ type PantryContextValue = {
     isLoading: boolean;
     storageError: string | null;
     addItem: (item: NewPantryItem) => Promise<void>;
+    deleteItem: (id: string) => Promise<void>;
+    updateItem: (
+        id: string,
+        updates: NewPantryItem,
+    ) => Promise<void>;
     completeItem: (
         id: string,
         outcome: PantryOutcome,
@@ -251,6 +256,58 @@ export function PantryProvider({
         [persistMutation],
     );
 
+    const updateItem = useCallback(
+        (
+            id: string,
+            updates: NewPantryItem,
+        ): Promise<void> =>
+            persistMutation((currentItems, currentHistory) => {
+                const existingItem = currentItems.find(
+                    (candidate) => candidate.id === id,
+                );
+
+                if (!existingItem) {
+                    throw new Error("Pantry item was not found.");
+                }
+
+                const updatedItem: PantryItem = {
+                    ...existingItem,
+                    ...updates,
+                };
+
+                return {
+                    items: currentItems.map((candidate) =>
+                        candidate.id === id
+                            ? updatedItem
+                            : candidate,
+                    ),
+                    history: currentHistory,
+                };
+            }),
+        [persistMutation],
+    );
+
+    const deleteItem = useCallback(
+        (id: string): Promise<void> =>
+            persistMutation((currentItems, currentHistory) => {
+                const itemExists = currentItems.some(
+                    (item) => item.id === id,
+                );
+
+                if (!itemExists) {
+                    throw new Error("Pantry item was not found.");
+                }
+
+                return {
+                    items: currentItems.filter(
+                        (item) => item.id !== id,
+                    ),
+                    history: currentHistory,
+                };
+            }),
+        [persistMutation],
+    );
+
     const completeItem = useCallback(
         (
             id: string,
@@ -288,6 +345,8 @@ export function PantryProvider({
             isLoading,
             storageError,
             addItem,
+            updateItem,
+            deleteItem,
             completeItem,
         }),
         [
@@ -296,6 +355,8 @@ export function PantryProvider({
             isLoading,
             storageError,
             addItem,
+            updateItem,
+            deleteItem,
             completeItem,
         ],
     );
