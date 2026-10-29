@@ -1,4 +1,3 @@
-
 import { useMemo, useState } from "react";
 import {
     ActivityIndicator,
@@ -10,6 +9,17 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import {
+    AlertCircle,
+    ArrowLeft,
+    ArrowRight,
+    ChefHat,
+    ImageOff,
+    Salad,
+    Sprout,
+    Utensils,
+    Plus,
+} from "lucide-react-native";
 
 import { usePantry } from "../../context/PantryContext";
 import { daysUntilExpiry } from "../../lib/expiry";
@@ -233,12 +243,14 @@ export default function RecipesScreen() {
                 ListHeaderComponent={
                     <View className="pb-5">
                         <Pressable
-                            onPress={() => router.back()}
+                            onPress={() => router.push("/pantry")}
                             accessibilityRole="button"
-                            className="self-start rounded-lg py-2"
+                            accessibilityLabel="Back to pantry"
+                            className="self-start flex-row items-center gap-2 rounded-lg py-2"
                         >
+                            <ArrowLeft size={18} color="#047857" strokeWidth={2} />
                             <Text className="font-semibold text-emerald-700">
-                                ← Back to pantry
+                                Back to pantry
                             </Text>
                         </Pressable>
 
@@ -323,9 +335,12 @@ export default function RecipesScreen() {
                                     </Text>
                                 </View>
                             ) : (
-                                <Text className="font-bold text-white">
-                                    Find recipes
-                                </Text>
+                                <View className="flex-row items-center gap-2">
+                                    <ChefHat size={20} color="#FFFFFF" strokeWidth={2} />
+                                    <Text className="font-bold text-white">
+                                        Find recipes
+                                    </Text>
+                                </View>
                             )}
                         </Pressable>
 
@@ -382,7 +397,8 @@ export default function RecipesScreen() {
                             />
                         ) : (
                             <View className="h-40 items-center justify-center bg-slate-100">
-                                <Text className="text-slate-500">
+                                <ImageOff size={28} color="#94A3B8" strokeWidth={1.8} />
+                                <Text className="mt-2 text-slate-500">
                                     Image unavailable
                                 </Text>
                             </View>
@@ -417,7 +433,7 @@ export default function RecipesScreen() {
                                 <Text className="font-bold text-emerald-700">
                                     View recipe
                                 </Text>
-                                <Text className="text-lg text-emerald-700">→</Text>
+                                <ArrowRight size={20} color="#047857" strokeWidth={2} />
                             </View>
                         </View>
                     </Pressable>
@@ -425,13 +441,17 @@ export default function RecipesScreen() {
 
                 ListEmptyComponent={
                     <View className="items-center rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-9">
-                        <Text className="text-4xl">
-                            {error
-                                ? "🌿"
-                                : !hasSearched
-                                    ? "🥗"
-                                    : "🍽️"}
-                        </Text>
+                        {error ? (
+                            <AlertCircle size={42} color="#B45309" strokeWidth={1.8} />
+                        ) : !hasSearched ? (
+                            ingredientsToSearch.length > 0 ? (
+                                <Salad size={42} color="#047857" strokeWidth={1.8} />
+                            ) : (
+                                <Sprout size={42} color="#047857" strokeWidth={1.8} />
+                            )
+                        ) : (
+                            <Utensils size={42} color="#64748B" strokeWidth={1.8} />
+                        )}
 
                         <Text className="mt-3 text-center text-lg font-bold text-slate-900">
                             {error
@@ -459,9 +479,12 @@ export default function RecipesScreen() {
                                 onPress={() => router.push("/add-item")}
                                 className="mt-5 rounded-xl bg-emerald-700 px-5 py-3"
                             >
-                                <Text className="font-bold text-white">
-                                    Add pantry item
-                                </Text>
+                                <View className="flex-row items-center gap-2">
+                                    <Plus size={18} color="#FFFFFF" strokeWidth={2.2} />
+                                    <Text className="font-bold text-white">
+                                        Add pantry item
+                                    </Text>
+                                </View>
                             </Pressable>
                         ) : null}
                     </View>

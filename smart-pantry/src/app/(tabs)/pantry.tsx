@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-
+import {Leaf, Plus, Search} from "lucide-react-native";
 import { SwipeablePantryItem } from "@/components/SwipeablePantryItem";
 import { usePantry } from "@/context/PantryContext";
 import { daysUntilExpiry } from "@/lib/expiry";
@@ -74,11 +74,10 @@ export default function PantryScreen() {
     const pantryItems = items ?? [];
 
     const [searchQuery, setSearchQuery] = useState("");
-    const [selectedLocation, setSelectedLocation] =
-        useState<string>("All locations");
-    const [expiryFilter, setExpiryFilter] =
-        useState<ExpiryFilter>("all");
+    const [selectedLocation, setSelectedLocation] = useState<string>("All locations");
+    const [expiryFilter, setExpiryFilter] = useState<ExpiryFilter>("all");
     const [sortBy, setSortBy] = useState<PantrySort>("expiry");
+    const [filtersExpanded, setFiltersExpanded] = useState(false)
 
     const filteredItems = useMemo(() => {
         const query = searchQuery.trim().toLowerCase();
@@ -194,17 +193,21 @@ export default function PantryScreen() {
                         onPress={() => router.push("/add-item")}
                         className="h-12 w-12 items-center justify-center rounded-2xl bg-emerald-700"
                     >
-                        <Text className="text-2xl font-medium text-white">
-                            +
-                        </Text>
+                        <Plus
+                            size={24}
+                            color="#FFFFFF"
+                            strokeWidth={2.4}
+                        />
                     </Pressable>
                 </View>
 
                 {/* Search */}
                 <View className="mt-6 flex-row items-center rounded-2xl border border-slate-200 bg-white px-4">
-                    <Text className="mr-2 text-lg text-slate-400">
-                        ⌕
-                    </Text>
+                    <Search
+                        size={20}
+                        color="#94A3B8"
+                        strokeWidth={2}
+                    />
 
                     <TextInput
                         value={searchQuery}
@@ -232,83 +235,125 @@ export default function PantryScreen() {
                 </View>
 
                 {/* Filters */}
-                <View className="mt-6 gap-5">
-                    <View>
-                        <Text className="text-sm font-bold text-slate-800">
-                            Storage location
-                        </Text>
 
-                        <View className="mt-2 flex-row flex-wrap gap-2">
-                            {[
-                                "All locations",
-                                ...PANTRY_LOCATIONS,
-                            ].map((location) => (
-                                <FilterChip
-                                    key={location}
-                                    label={location}
-                                    selected={
-                                        selectedLocation === location
-                                    }
-                                    onPress={() =>
-                                        setSelectedLocation(location)
-                                    }
-                                />
-                            ))}
-                        </View>
-                    </View>
-
-                    <View>
-                        <Text className="text-sm font-bold text-slate-800">
-                            Expiry status
-                        </Text>
-
-                        <View className="mt-2 flex-row flex-wrap gap-2">
-                            {EXPIRY_OPTIONS.map((option) => (
-                                <FilterChip
-                                    key={option.value}
-                                    label={option.label}
-                                    selected={
-                                        expiryFilter === option.value
-                                    }
-                                    onPress={() =>
-                                        setExpiryFilter(option.value)
-                                    }
-                                />
-                            ))}
-                        </View>
-                    </View>
-
-                    <View>
-                        <Text className="text-sm font-bold text-slate-800">
-                            Sort items by
-                        </Text>
-
-                        <View className="mt-2 flex-row flex-wrap gap-2">
-                            {SORT_OPTIONS.map((option) => (
-                                <FilterChip
-                                    key={option.value}
-                                    label={option.label}
-                                    selected={sortBy === option.value}
-                                    onPress={() =>
-                                        setSortBy(option.value)
-                                    }
-                                />
-                            ))}
-                        </View>
-                    </View>
-
-                    {hasActiveFilters && (
-                        <Pressable
-                            accessibilityRole="button"
-                            onPress={resetFilters}
-                            className="self-start rounded-lg py-1"
-                        >
-                            <Text className="font-semibold text-emerald-700">
-                                Reset filters
+                {/* Collapsible filters and sorting */}
+                <View className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                    <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel="Filters and sorting"
+                        accessibilityState={{ expanded: filtersExpanded }}
+                        onPress={() => setFiltersExpanded((current) => !current)}
+                        className="flex-row items-center justify-between p-4"
+                    >
+                        <View className="mr-3 flex-1">
+                            <Text className="text-base font-bold text-slate-900">
+                                Filters & sorting
                             </Text>
-                        </Pressable>
+
+                            <Text className="mt-1 text-xs leading-5 text-slate-500">
+                                {selectedLocation}
+                                {" · "}
+                                {EXPIRY_OPTIONS.find(
+                                    (option) => option.value === expiryFilter,
+                                )?.label}
+                                {" · "}
+                                {sortBy === "expiry"
+                                    ? "Soonest expiry first"
+                                    : "Name A–Z"}
+                            </Text>
+                        </View>
+
+                        <View className="h-9 w-9 items-center justify-center rounded-full bg-emerald-50">
+                            <Text className="text-xl font-semibold text-emerald-700">
+                                {filtersExpanded ? "−" : "+"}
+                            </Text>
+                        </View>
+                    </Pressable>
+
+                    {filtersExpanded && (
+                        <View className="gap-5 border-t border-slate-100 p-4">
+                            {/* Storage location */}
+                            <View>
+                                <Text className="text-sm font-bold text-slate-800">
+                                    Storage location
+                                </Text>
+
+                                <View className="mt-3 flex-row flex-wrap gap-2">
+                                    {["All locations", ...PANTRY_LOCATIONS].map(
+                                        (location) => (
+                                            <FilterChip
+                                                key={location}
+                                                label={location}
+                                                selected={selectedLocation === location}
+                                                onPress={() => setSelectedLocation(location)}
+                                            />
+                                        ),
+                                    )}
+                                </View>
+                            </View>
+
+                            {/* Expiry status */}
+                            <View>
+                                <Text className="text-sm font-bold text-slate-800">
+                                    Expiry status
+                                </Text>
+
+                                <View className="mt-3 flex-row flex-wrap gap-2">
+                                    {EXPIRY_OPTIONS.map((option) => (
+                                        <FilterChip
+                                            key={option.value}
+                                            label={option.label}
+                                            selected={expiryFilter === option.value}
+                                            onPress={() => setExpiryFilter(option.value)}
+                                        />
+                                    ))}
+                                </View>
+                            </View>
+
+                            {/* Sorting */}
+                            <View>
+                                <Text className="text-sm font-bold text-slate-800">
+                                    Sort items by
+                                </Text>
+
+                                <View className="mt-3 flex-row flex-wrap gap-2">
+                                    {SORT_OPTIONS.map((option) => (
+                                        <FilterChip
+                                            key={option.value}
+                                            label={option.label}
+                                            selected={sortBy === option.value}
+                                            onPress={() => setSortBy(option.value)}
+                                        />
+                                    ))}
+                                </View>
+                            </View>
+
+                            {/* Reset filters */}
+                            {hasActiveFilters && (
+                                <Pressable
+                                    accessibilityRole="button"
+                                    onPress={resetFilters}
+                                    className="self-start rounded-lg py-2"
+                                >
+                                    <Text className="font-semibold text-emerald-700">
+                                        Reset filters
+                                    </Text>
+                                </Pressable>
+                            )}
+
+                            <Pressable
+                                accessibilityRole="button"
+                                onPress={() => setFiltersExpanded(false)}
+                                className="items-center rounded-xl bg-slate-100 px-4 py-3"
+                            >
+                                <Text className="font-semibold text-slate-700">
+                                    Done
+                                </Text>
+                            </Pressable>
+                        </View>
                     )}
                 </View>
+
 
                 {/* Results heading */}
                 <View className="mt-8 flex-row items-end justify-between">
@@ -331,7 +376,11 @@ export default function PantryScreen() {
                 {/* Empty pantry */}
                 {pantryItems.length === 0 ? (
                     <View className="mt-4 items-center rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-8">
-                        <Text className="text-3xl">🥬</Text>
+                        <Leaf
+                            size={30}
+                            color="#047857"
+                            strokeWidth={1.8}
+                        />
 
                         <Text className="mt-3 text-base font-bold text-slate-900">
                             Your pantry is empty

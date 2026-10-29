@@ -6,6 +6,13 @@ import { useRouter } from "expo-router";
 
 import { usePantry } from "@/context/PantryContext";
 import { daysUntilExpiry } from "@/lib/expiry";
+import {
+    AlertCircle,
+    CircleCheck,
+    Clock,
+    Leaf,
+    Plus,
+} from "lucide-react-native";
 
 function SummaryCard({
                          title,
@@ -124,7 +131,11 @@ export default function HomeScreen() {
                     </View>
 
                     <View className="h-14 w-14 items-center justify-center rounded-2xl bg-emerald-100">
-                        <Text className="text-3xl">🥬</Text>
+                        <Leaf
+                            size={30}
+                            color="#047857"
+                            strokeWidth={1.8}
+                        />
                     </View>
                 </View>
 
@@ -145,9 +156,11 @@ export default function HomeScreen() {
                     </View>
 
                     <View className="h-10 w-10 items-center justify-center rounded-xl bg-white/20">
-                        <Text className="text-2xl font-medium text-white">
-                            +
-                        </Text>
+                        <Plus
+                            size={24}
+                            color="#FFFFFF"
+                            strokeWidth={2.4}
+                        />
                     </View>
                 </Pressable>
 
@@ -199,7 +212,11 @@ export default function HomeScreen() {
                     {attentionItems.length === 0 ? (
                         <View className="mt-4 rounded-2xl border border-slate-200 bg-white px-5 py-6">
                             <View className="mb-2 h-10 w-10 items-center justify-center rounded-full bg-emerald-100">
-                                <Text className="text-xl">✓</Text>
+                                <CircleCheck
+                                    size={22}
+                                    color="#047857"
+                                    strokeWidth={2}
+                                />
                             </View>
 
                             <Text className="text-base font-bold text-slate-900">
@@ -232,7 +249,19 @@ export default function HomeScreen() {
                                             }`}
                                         >
                                             <Text className="text-xl">
-                                                {expired ? "!" : "⏰"}
+                                                {expired ? (
+                                                    <AlertCircle
+                                                        size={22}
+                                                        color="#BE123C"
+                                                        strokeWidth={2}
+                                                    />
+                                                ) : (
+                                                    <Clock
+                                                        size={22}
+                                                        color="#B45309"
+                                                        strokeWidth={2}
+                                                    />
+                                                )}
                                             </Text>
                                         </View>
 

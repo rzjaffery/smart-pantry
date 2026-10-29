@@ -1,5 +1,3 @@
-
-import { useRouter } from "expo-router";
 import {
     ActivityIndicator,
     FlatList,
@@ -7,6 +5,13 @@ import {
     Text,
     View,
 } from "react-native";
+import { useRouter } from "expo-router";
+import {
+    ArrowLeft,
+    CheckCircle2,
+    Sprout,
+    Trash2,
+} from "lucide-react-native";
 
 import { usePantry } from "@/context/PantryContext";
 
@@ -46,9 +51,19 @@ export default function HistoryScreen() {
                 }}
                 ListHeaderComponent={
                     <View className="mb-5">
-                        <Pressable onPress={() => router.back()}>
+                        <Pressable
+                            onPress={() => router.push("/pantry")}
+                            accessibilityRole="button"
+                            accessibilityLabel="Back to pantry"
+                            className="self-start flex-row items-center gap-2 rounded-lg py-2"
+                        >
+                            <ArrowLeft
+                                size={18}
+                                color="#047857"
+                                strokeWidth={2}
+                            />
                             <Text className="font-semibold text-emerald-700">
-                                ← Back to pantry
+                                Back to pantry
                             </Text>
                         </Pressable>
 
@@ -65,18 +80,32 @@ export default function HistoryScreen() {
                                 <Text className="text-2xl font-bold text-emerald-800">
                                     {consumedCount}
                                 </Text>
-                                <Text className="mt-1 text-xs font-semibold text-emerald-800">
-                                    Consumed
-                                </Text>
+                                <View className="mt-1 flex-row items-center gap-1.5">
+                                    <CheckCircle2
+                                        size={15}
+                                        color="#166534"
+                                        strokeWidth={2}
+                                    />
+                                    <Text className="text-xs font-semibold text-emerald-800">
+                                        Consumed
+                                    </Text>
+                                </View>
                             </View>
 
                             <View className="flex-1 rounded-2xl border border-rose-200 bg-rose-50 p-4">
                                 <Text className="text-2xl font-bold text-rose-800">
                                     {wastedCount}
                                 </Text>
-                                <Text className="mt-1 text-xs font-semibold text-rose-800">
-                                    Wasted
-                                </Text>
+                                <View className="mt-1 flex-row items-center gap-1.5">
+                                    <Trash2
+                                        size={15}
+                                        color="#9F1239"
+                                        strokeWidth={2}
+                                    />
+                                    <Text className="text-xs font-semibold text-rose-800">
+                                        Wasted
+                                    </Text>
+                                </View>
                             </View>
                         </View>
 
@@ -108,13 +137,30 @@ export default function HistoryScreen() {
                                 </View>
 
                                 <View
-                                    className={`rounded-full px-3 py-1 ${
-                                        consumed ? "bg-emerald-100" : "bg-rose-100"
+                                    className={`flex-row items-center gap-1.5 rounded-full px-3 py-1 ${
+                                        consumed
+                                            ? "bg-emerald-100"
+                                            : "bg-rose-100"
                                     }`}
                                 >
+                                    {consumed ? (
+                                        <CheckCircle2
+                                            size={14}
+                                            color="#166534"
+                                            strokeWidth={2}
+                                        />
+                                    ) : (
+                                        <Trash2
+                                            size={14}
+                                            color="#9F1239"
+                                            strokeWidth={2}
+                                        />
+                                    )}
                                     <Text
                                         className={`text-xs font-bold ${
-                                            consumed ? "text-emerald-800" : "text-rose-800"
+                                            consumed
+                                                ? "text-emerald-800"
+                                                : "text-rose-800"
                                         }`}
                                     >
                                         {consumed ? "Consumed" : "Wasted"}
@@ -137,7 +183,11 @@ export default function HistoryScreen() {
                 }}
                 ListEmptyComponent={
                     <View className="items-center rounded-2xl border border-dashed border-slate-300 bg-white p-8">
-                        <Text className="text-4xl">🌱</Text>
+                        <Sprout
+                            size={42}
+                            color="#047857"
+                            strokeWidth={1.8}
+                        />
 
                         <Text className="mt-3 text-lg font-bold text-slate-900">
                             No activity yet
@@ -154,3 +204,4 @@ export default function HistoryScreen() {
         </View>
     );
 }
+

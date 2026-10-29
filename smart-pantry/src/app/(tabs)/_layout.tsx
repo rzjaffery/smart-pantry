@@ -1,6 +1,11 @@
 
 import { Tabs } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
+import {
+    House,
+    Package,
+    ChefHat,
+    History as HistoryIcon,
+} from "lucide-react-native";
 
 export default function TabsLayout() {
     return (
@@ -29,11 +34,11 @@ export default function TabsLayout() {
                 name="index"
                 options={{
                     title: "Home",
-                    tabBarIcon: ({ color, size }) => (
-                        <Ionicons
-                            name="home-outline"
+                    tabBarIcon: ({ color, size, focused }) => (
+                        <House
+                            color={color}
                             size={size}
-                            color={typeof color === "number" ? "#64748b" : color ?? "#64748b"}
+                            strokeWidth={focused ? 2.5 : 1.8}
                         />
                     ),
                 }}
@@ -43,11 +48,11 @@ export default function TabsLayout() {
                 name="pantry"
                 options={{
                     title: "Pantry",
-                    tabBarIcon: ({ color, size }) => (
-                        <Ionicons
-                            name="basket-outline"
+                    tabBarIcon: ({ color, size, focused }) => (
+                        <Package
+                            color={color}
                             size={size}
-                            color={typeof color === "number" ? "#64748b" : color ?? "#64748b"}
+                            strokeWidth={focused ? 2.5 : 1.8}
                         />
                     ),
                 }}
@@ -57,11 +62,11 @@ export default function TabsLayout() {
                 name="recipes"
                 options={{
                     title: "Recipes",
-                    tabBarIcon: ({ color, size }) => (
-                        <Ionicons
-                            name="restaurant-outline"
+                    tabBarIcon: ({ color, size, focused }) => (
+                        <ChefHat
+                            color={color}
                             size={size}
-                            color={typeof color === "number" ? "#64748b" : color ?? "#64748b"}
+                            strokeWidth={focused ? 2.5 : 1.8}
                         />
                     ),
                 }}
@@ -71,11 +76,11 @@ export default function TabsLayout() {
                 name="history"
                 options={{
                     title: "History",
-                    tabBarIcon: ({ color, size }) => (
-                        <Ionicons
-                            name="time-outline"
+                    tabBarIcon: ({ color, size, focused }) => (
+                        <HistoryIcon
+                            color={color}
                             size={size}
-                            color={typeof color === "number" ? "#64748b" : color ?? "#64748b"}
+                            strokeWidth={focused ? 2.5 : 1.8}
                         />
                     ),
                 }}

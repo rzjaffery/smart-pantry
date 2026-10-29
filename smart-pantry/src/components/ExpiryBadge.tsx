@@ -1,5 +1,10 @@
-
 import { Text, View } from "react-native";
+import {
+  AlertCircle,
+  CheckCircle2,
+  Clock,
+} from "lucide-react-native";
+
 import {
   daysUntilExpiry,
   getExpiryStatus,
@@ -40,15 +45,31 @@ export function ExpiryBadge({ expiryDate }: ExpiryBadgeProps) {
     label = "Fresh";
   }
 
+  const StatusIcon =
+      status === "expired"
+          ? AlertCircle
+          : status === "today" || status === "soon"
+              ? Clock
+              : CheckCircle2;
+
+  const iconColor =
+      status === "expired" || status === "today"
+          ? "#B91C1C"
+          : status === "soon"
+              ? "#92400E"
+              : "#166534";
+
   return (
-    <View
-      className={`self-start rounded-full px-3 py-1 ${backgroundClasses[status]}`}
-    >
-      <Text
-        className={`text-xs font-semibold ${textClasses[status]}`}
+      <View
+          className={`self-start flex-row items-center gap-1.5 rounded-full px-3 py-1 ${backgroundClasses[status]}`}
       >
-        {label}
-      </Text>
-    </View>
+        <StatusIcon size={13} color={iconColor} strokeWidth={2.2} />
+        <Text
+            className={`text-xs font-semibold ${textClasses[status]}`}
+        >
+          {label}
+        </Text>
+      </View>
   );
 }
+
