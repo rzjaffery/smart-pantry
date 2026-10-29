@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import {
     Alert,
@@ -15,6 +16,16 @@ import DateTimePicker, {
 import { useRouter } from "expo-router";
 import { Picker } from "@react-native-picker/picker";
 import { SafeAreaView } from "react-native-safe-area-context";
+import {
+    CalendarDays,
+    Check,
+    ChevronRight,
+    MapPin,
+    PackagePlus,
+    Save,
+    Scale,
+    X,
+} from "lucide-react-native";
 
 import { usePantry } from "@/context/PantryContext";
 import { formatExpiryDate, toDateKey } from "@/lib/expiry";
@@ -62,8 +73,10 @@ export default function AddItemScreen() {
     const [name, setName] = useState("");
     const [quantity, setQuantity] = useState("1");
     const [unit, setUnit] = useState<string>("pieces");
-    const [location, setLocation] = useState<PantryLocation>("Fridge");
-    const [expiryDate, setExpiryDate] = useState<Date>(getTomorrow);
+    const [location, setLocation] =
+        useState<PantryLocation>("Fridge");
+    const [expiryDate, setExpiryDate] =
+        useState<Date>(getTomorrow);
     const [showIOSPicker, setShowIOSPicker] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
 
@@ -74,8 +87,8 @@ export default function AddItemScreen() {
                 mode: "date",
                 display: "calendar",
                 minimumDate: getTodayAtMidnight(),
-                onValueChange: (_event, selectedDate) => {
-                    if (selectedDate) {
+                onChange: (event, selectedDate) => {
+                    if (event.type === "set" && selectedDate) {
                         setExpiryDate(selectedDate);
                     }
                 },
@@ -141,6 +154,7 @@ export default function AddItemScreen() {
         }
 
         setIsSaving(true);
+
         try {
             await addItem({
                 name: trimmedName,
@@ -153,6 +167,7 @@ export default function AddItemScreen() {
             router.back();
         } catch (error) {
             console.error("Failed to save pantry item:", error);
+
             Alert.alert(
                 "Couldn't save item",
                 "Your pantry item wasn't saved. Please try again.",
@@ -171,7 +186,6 @@ export default function AddItemScreen() {
         >
             <KeyboardAvoidingView
                 className="flex-1"
-                style={{ flex: 1 }}
                 behavior={Platform.OS === "ios" ? "padding" : undefined}
             >
                 <ScrollView
@@ -185,199 +199,277 @@ export default function AddItemScreen() {
                     showsVerticalScrollIndicator={false}
                 >
                     {/* Page heading */}
-                    <Text className="text-xs font-bold uppercase tracking-widest text-emerald-700">
-                        SMART PANTRY
-                    </Text>
+                    <View className="flex-row items-center justify-between">
+                        <View className="min-w-0 flex-1 pr-3">
+                            <Text className="text-xs font-bold uppercase tracking-widest text-emerald-700">
+                                SMART PANTRY
+                            </Text>
 
-                    <Text className="mt-2 text-3xl font-bold text-slate-900">
-                        Add an item
-                    </Text>
+                            <Text className="mt-2 text-3xl font-bold text-slate-900">
+                                Add an item
+                            </Text>
 
-                    <Text className="mt-2 text-base leading-6 text-slate-600">
-                        Keep track of your ingredients before they expire.
-                    </Text>
+                            <Text className="mt-2 text-sm leading-6 text-slate-600">
+                                Add your food and keep track of when it expires.
+                            </Text>
+                        </View>
 
-                    {/* Item name */}
-                    <View className="mt-7">
-                        <Text className="mb-2 text-sm font-semibold text-slate-800">
-                            Item name
-                        </Text>
-
-                        <TextInput
-                            value={name}
-                            onChangeText={setName}
-                            placeholder="e.g. Fresh milk"
-                            placeholderTextColor="#94A3B8"
-                            autoCapitalize="words"
-                            autoCorrect={false}
-                            maxLength={80}
-                            returnKeyType="next"
-                            className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-base text-slate-900"
-                        />
+                        <View className="h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-emerald-100">
+                            <PackagePlus
+                                size={28}
+                                color="#047857"
+                                strokeWidth={1.8}
+                            />
+                        </View>
                     </View>
 
-                    {/* Quantity and unit */}
-                    <View className="mt-5">
-                        <Text className="mb-3 text-sm font-semibold text-slate-800">
-                            Quantity
-                        </Text>
+                    {/* Form container */}
+                    <View className="mt-7 rounded-2xl border border-slate-200 bg-white p-4">
+                        {/* Item name */}
+                        <View>
+                            <Text className="mb-2 text-sm font-semibold text-slate-800">
+                                Item name
+                            </Text>
 
-                        <View className="flex-row gap-3">
-                            <View className="flex-1">
-                                <Text className="mb-2 text-xs font-medium text-slate-500">
-                                    Amount
-                                </Text>
+                            <TextInput
+                                value={name}
+                                onChangeText={setName}
+                                placeholder="e.g. Fresh milk"
+                                placeholderTextColor="#94A3B8"
+                                autoCapitalize="words"
+                                autoCorrect={false}
+                                maxLength={80}
+                                returnKeyType="next"
+                                accessibilityLabel="Item name"
+                                className="min-h-12 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-900"
+                            />
+                        </View>
 
-                                <TextInput
-                                    value={quantity}
-                                    onChangeText={setQuantity}
-                                    placeholder="1"
-                                    placeholderTextColor="#94A3B8"
-                                    keyboardType="decimal-pad"
-                                    className="rounded-xl border border-slate-200 bg-white px-4 py-4 text-base text-slate-900"
+                        {/* Quantity and unit */}
+                        <View className="mt-5">
+                            <View className="mb-3 flex-row items-center gap-2">
+                                <Scale
+                                    size={17}
+                                    color="#047857"
                                 />
+                                <Text className="text-sm font-semibold text-slate-800">
+                                    Quantity
+                                </Text>
                             </View>
 
-                            <View className="flex-1">
-                                <Text className="mb-2 text-xs font-medium text-slate-500">
-                                    Unit
-                                </Text>
+                            <View className="flex-row gap-3">
+                                <View className="min-w-0 flex-1">
+                                    <Text className="mb-2 text-xs font-medium text-slate-500">
+                                        Amount
+                                    </Text>
 
-                                <View className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-                                    <Picker
-                                        selectedValue={unit}
-                                        onValueChange={(value: string) =>
-                                            setUnit(value)
-                                        }
-                                        mode="dropdown"
-                                        dropdownIconColor="#047857"
-                                        prompt="Select a unit"
-                                        style={{
-                                            height: 52,
-                                            color: "#0F172A",
-                                        }}
-                                    >
-                                        {UNIT_OPTIONS.map((option) => (
-                                            <Picker.Item
-                                                key={option.value}
-                                                label={option.label}
-                                                value={option.value}
-                                            />
-                                        ))}
-                                    </Picker>
+                                    <TextInput
+                                        value={quantity}
+                                        onChangeText={setQuantity}
+                                        placeholder="1"
+                                        placeholderTextColor="#94A3B8"
+                                        keyboardType="decimal-pad"
+                                        accessibilityLabel="Quantity amount"
+                                        className="min-h-12 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-base text-slate-900"
+                                    />
+                                </View>
+
+                                <View className="min-w-0 flex-1">
+                                    <Text className="mb-2 text-xs font-medium text-slate-500">
+                                        Unit
+                                    </Text>
+
+                                    <View className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                                        <Picker
+                                            selectedValue={unit}
+                                            onValueChange={(value: string) =>
+                                                setUnit(value)
+                                            }
+                                            mode="dropdown"
+                                            dropdownIconColor="#047857"
+                                            prompt="Select a unit"
+                                            style={{
+                                                height: 52,
+                                                color: "#0F172A",
+                                            }}
+                                        >
+                                            {UNIT_OPTIONS.map((option) => (
+                                                <Picker.Item
+                                                    key={option.value}
+                                                    label={option.label}
+                                                    value={option.value}
+                                                />
+                                            ))}
+                                        </Picker>
+                                    </View>
                                 </View>
                             </View>
                         </View>
-                    </View>
 
-                    {/* Storage location */}
-                    <View className="mt-5">
-                        <Text className="mb-3 text-sm font-semibold text-slate-800">
-                            Storage location
-                        </Text>
+                        {/* Storage location */}
+                        <View className="mt-6">
+                            <View className="mb-3 flex-row items-center gap-2">
+                                <MapPin
+                                    size={17}
+                                    color="#047857"
+                                />
+                                <Text className="text-sm font-semibold text-slate-800">
+                                    Storage location
+                                </Text>
+                            </View>
 
-                        <View className="flex-row flex-wrap gap-2">
-                            {PANTRY_LOCATIONS.map((option) => {
-                                const selected = location === option;
+                            <View className="flex-row flex-wrap gap-2">
+                                {PANTRY_LOCATIONS.map((option) => {
+                                    const selected = location === option;
 
-                                return (
-                                    <Pressable
-                                        key={option}
-                                        accessibilityRole="radio"
-                                        accessibilityState={{ selected }}
-                                        onPress={() => setLocation(option)}
-                                        className={`rounded-full border px-4 py-3 ${
-                                            selected
-                                                ? "border-emerald-700 bg-emerald-50"
-                                                : "border-slate-200 bg-white"
-                                        }`}
-                                    >
-                                        <Text
-                                            className={`text-sm font-semibold ${
+                                    return (
+                                        <Pressable
+                                            key={option}
+                                            accessibilityRole="radio"
+                                            accessibilityState={{ selected }}
+                                            onPress={() => setLocation(option)}
+                                            className={`flex-row items-center gap-2 rounded-xl border px-3 py-3 ${
                                                 selected
-                                                    ? "text-emerald-800"
-                                                    : "text-slate-600"
+                                                    ? "border-emerald-700 bg-emerald-50"
+                                                    : "border-slate-200 bg-slate-50"
                                             }`}
                                         >
-                                            {option}
-                                        </Text>
-                                    </Pressable>
-                                );
-                            })}
+                                            {selected ? (
+                                                <Check
+                                                    size={15}
+                                                    color="#047857"
+                                                    strokeWidth={2.5}
+                                                />
+                                            ) : null}
+
+                                            <Text
+                                                className={`text-sm font-semibold ${
+                                                    selected
+                                                        ? "text-emerald-800"
+                                                        : "text-slate-600"
+                                                }`}
+                                            >
+                                                {option}
+                                            </Text>
+                                        </Pressable>
+                                    );
+                                })}
+                            </View>
                         </View>
-                    </View>
 
-                    {/* Expiry date */}
-                    <View className="mt-5">
-                        <Text className="mb-2 text-sm font-semibold text-slate-800">
-                            Expiry date
-                        </Text>
-
-                        <Pressable
-                            onPress={openDatePicker}
-                            accessibilityRole="button"
-                            className="flex-row items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-4"
-                        >
-                            <Text className="text-base font-medium text-slate-800">
-                                {expiryDateLabel}
-                            </Text>
-
-                            <Text className="text-sm font-semibold text-emerald-700">
-                                Choose date
-                            </Text>
-                        </Pressable>
-
-                        <Text className="mt-2 text-xs text-slate-500">
-                            Expiry date cannot be earlier than today.
-                        </Text>
-                    </View>
-
-                    {/* Inline date picker for iOS */}
-                    {Platform.OS === "ios" && showIOSPicker && (
-                        <View className="mt-4 rounded-xl border border-slate-200 bg-white p-3">
-                            <DateTimePicker
-                                value={expiryDate}
-                                mode="date"
-                                display="spinner"
-                                minimumDate={getTodayAtMidnight()}
-                                onValueChange={(_event, selectedDate) => {
-                                    if (selectedDate) {
-                                        setExpiryDate(selectedDate);
-                                    }
-                                }}
-                            />
+                        {/* Expiry date */}
+                        <View className="mt-6">
+                            <View className="mb-3 flex-row items-center gap-2">
+                                <CalendarDays
+                                    size={17}
+                                    color="#047857"
+                                />
+                                <Text className="text-sm font-semibold text-slate-800">
+                                    Expiry date
+                                </Text>
+                            </View>
 
                             <Pressable
-                                onPress={() => setShowIOSPicker(false)}
-                                className="items-center rounded-lg bg-emerald-700 px-4 py-3"
+                                onPress={openDatePicker}
+                                accessibilityRole="button"
+                                accessibilityLabel={`Choose expiry date, currently ${expiryDateLabel}`}
+                                className="min-h-14 flex-row items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-3"
                             >
-                                <Text className="font-semibold text-white">
-                                    Done
-                                </Text>
+                                <View className="min-w-0 flex-1 pr-2">
+                                    <Text className="text-xs text-slate-500">
+                                        Selected date
+                                    </Text>
+
+                                    <Text className="mt-1 text-sm font-semibold text-slate-900">
+                                        {expiryDateLabel}
+                                    </Text>
+                                </View>
+
+                                <View className="flex-row items-center gap-1">
+                                    <Text className="text-sm font-semibold text-emerald-700">
+                                        Change
+                                    </Text>
+
+                                    <ChevronRight
+                                        size={17}
+                                        color="#047857"
+                                    />
+                                </View>
                             </Pressable>
+
+                            <Text className="mt-2 text-xs leading-5 text-slate-500">
+                                Choose today or a future date.
+                            </Text>
                         </View>
-                    )}
+
+                        {/* Inline iOS date picker */}
+                        {Platform.OS === "ios" && showIOSPicker && (
+                            <View className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 p-3">
+                                <DateTimePicker
+                                    value={expiryDate}
+                                    mode="date"
+                                    display="spinner"
+                                    minimumDate={getTodayAtMidnight()}
+                                    onChange={(_event, selectedDate) => {
+                                        if (selectedDate) {
+                                            setExpiryDate(selectedDate);
+                                        }
+                                    }}
+                                />
+
+                                <Pressable
+                                    accessibilityRole="button"
+                                    onPress={() => setShowIOSPicker(false)}
+                                    className="mt-2 items-center rounded-xl bg-emerald-700 px-4 py-3"
+                                >
+                                    <Text className="font-semibold text-white">
+                                        Done
+                                    </Text>
+                                </Pressable>
+                            </View>
+                        )}
+                    </View>
 
                     {/* Form actions */}
                     <Pressable
                         onPress={() => void handleSave()}
                         disabled={isSaving}
                         accessibilityRole="button"
-                        className={`mt-8 items-center rounded-xl px-5 py-4 ${
+                        accessibilityLabel="Save pantry item"
+                        className={`mt-6 min-h-14 flex-row items-center justify-center gap-2 rounded-2xl px-5 py-4 ${
                             isSaving ? "bg-emerald-500" : "bg-emerald-700"
                         }`}
                     >
-                        <Text className="text-base font-bold text-white">
-                            {isSaving ? "Saving item..." : "Save pantry item"}
-                        </Text>
+                        {isSaving ? (
+                            <Text className="text-base font-bold text-white">
+                                Saving item...
+                            </Text>
+                        ) : (
+                            <>
+                                <Save
+                                    size={19}
+                                    color="#FFFFFF"
+                                    strokeWidth={2}
+                                />
+
+                                <Text className="text-base font-bold text-white">
+                                    Save pantry item
+                                </Text>
+                            </>
+                        )}
                     </Pressable>
 
                     <Pressable
                         onPress={() => router.back()}
                         disabled={isSaving}
                         accessibilityRole="button"
-                        className="mt-3 items-center rounded-xl px-5 py-3"
+                        className="mt-3 min-h-12 flex-row items-center justify-center gap-2 rounded-xl px-5 py-3"
                     >
+                        <X
+                            size={17}
+                            color="#64748B"
+                        />
+
                         <Text className="font-semibold text-slate-600">
                             Cancel
                         </Text>
