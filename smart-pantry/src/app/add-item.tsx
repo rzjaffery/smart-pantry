@@ -234,7 +234,7 @@ export default function AddItemScreen() {
                                     placeholder="1"
                                     placeholderTextColor="#94A3B8"
                                     keyboardType="decimal-pad"
-                                    className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-base text-slate-900"
+                                    className="rounded-xl border border-slate-200 bg-white px-4 py-4 text-base text-slate-900"
                                 />
                             </View>
 
