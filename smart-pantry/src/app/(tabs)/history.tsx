@@ -1,3 +1,4 @@
+
 import {
     ActivityIndicator,
     FlatList,
@@ -5,18 +6,18 @@ import {
     Text,
     View,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { SafeAreaView } from "react-native-safe-area-context";
 import {
-    ArrowLeft,
+    CalendarClock,
     CheckCircle2,
-    Sprout,
+    History as HistoryIcon,
+    MapPin,
     Trash2,
 } from "lucide-react-native";
 
 import { usePantry } from "@/context/PantryContext";
 
 export default function HistoryScreen() {
-    const router = useRouter();
     const { history, isLoading, storageError } = usePantry();
 
     const consumedCount = history.filter(
@@ -29,105 +30,117 @@ export default function HistoryScreen() {
 
     if (isLoading) {
         return (
-            <View className="flex-1 items-center justify-center bg-slate-50">
-                <ActivityIndicator size="large" color="#047857" />
-                <Text className="mt-3 text-slate-600">
-                    Loading activity...
-                </Text>
-            </View>
+            <SafeAreaView
+                className="flex-1 bg-slate-50"
+                edges={["top"]}
+            >
+                <View className="flex-1 items-center justify-center">
+                    <ActivityIndicator size="large" color="#047857" />
+
+                    <Text className="mt-3 text-slate-600">
+                        Loading activity...
+                    </Text>
+                </View>
+            </SafeAreaView>
         );
     }
 
     return (
-        <View className="flex-1 bg-slate-50">
+        <SafeAreaView
+            className="flex-1 bg-slate-50"
+            edges={["top"]}
+        >
             <FlatList
+                className="flex-1"
                 data={history}
                 keyExtractor={(entry) => entry.item.id}
                 contentContainerStyle={{
                     paddingHorizontal: 20,
-                    paddingTop: 45,
-                    paddingBottom: 20,
+                    paddingTop: 16,
+                    paddingBottom: 28,
                     flexGrow: 1,
                 }}
                 ListHeaderComponent={
                     <View className="mb-5">
-                        <Pressable
-                            onPress={() => router.push("/pantry")}
-                            accessibilityRole="button"
-                            accessibilityLabel="Back to pantry"
-                            className="self-start flex-row items-center gap-2 rounded-lg py-2"
-                        >
-                            <ArrowLeft
-                                size={18}
-                                color="#047857"
-                                strokeWidth={2}
-                            />
-                            <Text className="font-semibold text-emerald-700">
-                                Back to pantry
-                            </Text>
-                        </Pressable>
+                        {/* Consistent screen heading */}
+                        <Text className="text-xs font-bold uppercase tracking-widest text-emerald-700">
+                            SMART PANTRY
+                        </Text>
 
-                        <Text className="mt-5 text-3xl font-bold text-slate-900">
+                        <Text className="mt-2 text-3xl font-bold text-slate-900">
                             Activity history
                         </Text>
 
-                        <Text className="mt-2 text-base text-slate-600">
-                            See how you're reducing food waste.
+                        <Text className="mt-2 text-base leading-6 text-slate-600">
+                            Track what you've used and what has gone to waste.
                         </Text>
 
+                        {/* Summary cards */}
                         <View className="mt-5 flex-row gap-3">
-                            <View className="flex-1 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-                                <Text className="text-2xl font-bold text-emerald-800">
+                            <View className="min-w-0 flex-1 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                                <CheckCircle2
+                                    size={22}
+                                    color="#047857"
+                                    strokeWidth={2}
+                                />
+
+                                <Text className="mt-3 text-2xl font-bold text-emerald-800">
                                     {consumedCount}
                                 </Text>
-                                <View className="mt-1 flex-row items-center gap-1.5">
-                                    <CheckCircle2
-                                        size={15}
-                                        color="#166534"
-                                        strokeWidth={2}
-                                    />
-                                    <Text className="text-xs font-semibold text-emerald-800">
-                                        Consumed
-                                    </Text>
-                                </View>
+
+                                <Text className="mt-1 text-xs font-semibold text-emerald-800">
+                                    Consumed
+                                </Text>
                             </View>
 
-                            <View className="flex-1 rounded-2xl border border-rose-200 bg-rose-50 p-4">
-                                <Text className="text-2xl font-bold text-rose-800">
+                            <View className="min-w-0 flex-1 rounded-2xl border border-rose-200 bg-rose-50 p-4">
+                                <Trash2
+                                    size={22}
+                                    color="#BE123C"
+                                    strokeWidth={2}
+                                />
+
+                                <Text className="mt-3 text-2xl font-bold text-rose-800">
                                     {wastedCount}
                                 </Text>
-                                <View className="mt-1 flex-row items-center gap-1.5">
-                                    <Trash2
-                                        size={15}
-                                        color="#9F1239"
-                                        strokeWidth={2}
-                                    />
-                                    <Text className="text-xs font-semibold text-rose-800">
-                                        Wasted
-                                    </Text>
-                                </View>
+
+                                <Text className="mt-1 text-xs font-semibold text-rose-800">
+                                    Wasted
+                                </Text>
                             </View>
                         </View>
 
                         {storageError ? (
-                            <Text className="mt-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">
+                            <Text className="mt-4 rounded-xl bg-amber-50 p-3 text-sm leading-5 text-amber-900">
                                 {storageError}
                             </Text>
                         ) : null}
 
-                        <Text className="mb-2 mt-7 text-lg font-bold text-slate-900">
-                            Recent activity
-                        </Text>
+                        <View className="mt-7 flex-row items-center gap-2">
+                            <HistoryIcon
+                                size={20}
+                                color="#0F172A"
+                                strokeWidth={2}
+                            />
+
+                            <Text className="text-lg font-bold text-slate-900">
+                                Recent activity
+                            </Text>
+                        </View>
                     </View>
                 }
                 renderItem={({ item: entry }) => {
                     const consumed = entry.outcome === "consumed";
+                    const statusColor = consumed ? "#047857" : "#BE123C";
 
                     return (
-                        <View className="mb-3 rounded-2xl border border-slate-200 bg-white p-4">
+                        <View className="mb-3 w-full rounded-2xl border border-slate-200 bg-white p-4">
                             <View className="flex-row items-start justify-between gap-3">
-                                <View className="flex-1">
-                                    <Text className="text-base font-bold text-slate-900">
+                                <View className="min-w-0 flex-1">
+                                    <Text
+                                        numberOfLines={2}
+                                        className="text-base font-bold leading-6 text-slate-900"
+                                    >
                                         {entry.item.name}
                                     </Text>
 
@@ -137,7 +150,7 @@ export default function HistoryScreen() {
                                 </View>
 
                                 <View
-                                    className={`flex-row items-center gap-1.5 rounded-full px-3 py-1 ${
+                                    className={`max-w-[130px] shrink-0 flex-row items-center gap-1.5 rounded-full px-3 py-2 ${
                                         consumed
                                             ? "bg-emerald-100"
                                             : "bg-rose-100"
@@ -146,16 +159,15 @@ export default function HistoryScreen() {
                                     {consumed ? (
                                         <CheckCircle2
                                             size={14}
-                                            color="#166534"
-                                            strokeWidth={2}
+                                            color={statusColor}
                                         />
                                     ) : (
                                         <Trash2
                                             size={14}
-                                            color="#9F1239"
-                                            strokeWidth={2}
+                                            color={statusColor}
                                         />
                                     )}
+
                                     <Text
                                         className={`text-xs font-bold ${
                                             consumed
@@ -168,28 +180,46 @@ export default function HistoryScreen() {
                                 </View>
                             </View>
 
-                            <View className="mt-3 border-t border-slate-100 pt-3">
-                                <Text className="text-xs text-slate-500">
-                                    Location: {entry.item.location}
-                                </Text>
+                            <View className="mt-3 gap-3 border-t border-slate-100 pt-3">
+                                <View className="flex-row items-center gap-2">
+                                    <MapPin
+                                        size={15}
+                                        color="#64748B"
+                                    />
 
-                                <Text className="mt-1 text-xs text-slate-500">
-                                    Recorded:{" "}
-                                    {new Date(entry.completedAt).toLocaleString()}
-                                </Text>
+                                    <Text className="flex-1 text-xs leading-5 text-slate-500">
+                                        Location: {entry.item.location}
+                                    </Text>
+                                </View>
+
+                                <View className="flex-row items-start gap-2">
+                                    <CalendarClock
+                                        size={15}
+                                        color="#64748B"
+                                    />
+
+                                    <Text className="flex-1 text-xs leading-5 text-slate-500">
+                                        Recorded:{" "}
+                                        {new Date(
+                                            entry.completedAt,
+                                        ).toLocaleString()}
+                                    </Text>
+                                </View>
                             </View>
                         </View>
                     );
                 }}
                 ListEmptyComponent={
-                    <View className="items-center rounded-2xl border border-dashed border-slate-300 bg-white p-8">
-                        <Sprout
-                            size={42}
-                            color="#047857"
-                            strokeWidth={1.8}
-                        />
+                    <View className="items-center rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-8">
+                        <View className="h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50">
+                            <HistoryIcon
+                                size={30}
+                                color="#047857"
+                                strokeWidth={1.8}
+                            />
+                        </View>
 
-                        <Text className="mt-3 text-lg font-bold text-slate-900">
+                        <Text className="mt-4 text-lg font-bold text-slate-900">
                             No activity yet
                         </Text>
 
@@ -201,7 +231,6 @@ export default function HistoryScreen() {
                 }
                 showsVerticalScrollIndicator={false}
             />
-        </View>
+        </SafeAreaView>
     );
 }
-
