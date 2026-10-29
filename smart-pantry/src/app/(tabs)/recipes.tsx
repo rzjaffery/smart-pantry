@@ -1,8 +1,8 @@
+
 import { useMemo, useState } from "react";
 import {
     ActivityIndicator,
     FlatList,
-    Image,
     Pressable,
     Text,
     View,
@@ -10,471 +10,68 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import {
-    AlertCircle,
     ArrowRight,
     CalendarClock,
     ChefHat,
-    ImageOff,
+    Clock,
     Plus,
-    RefreshCw,
-    Salad,
-    Sprout,
+    ShieldAlert,
     Utensils,
 } from "lucide-react-native";
 
 import { usePantry } from "@/context/PantryContext";
 import { daysUntilExpiry } from "@/lib/expiry";
-import type { MealSummary } from "@/features/recipes/mealdb";
+import { LOCAL_RECIPE_CATALOG } from "@/features/recipes/recipeCatalog";
+import { rankRecipesForPantry } from "@/features/recipes/recipeMatcher";
+import { HALAL_RECIPE_NOTICE } from "@/features/recipes/recipeTypes";
 
-type RecipeSuggestion = MealSummary & {
-    matchedIngredients: string[];
-};
+import type { LocalRecipeMatch } from "@/features/recipes/recipeTypes";
 
-type RawMeal = Record<string, unknown>;
-
-type MealApiResponse = {
-    meals?: RawMeal[] | null;
-};
-
-type MealDetails = MealSummary & {
-    ingredients: string[];
-};
-
-const MEALDB_BASE_URL =
-    "https://www.themealdb.com/api/json/v1/1";
-
-const MAX_SEARCH_INGREDIENTS = 12;
-const MAX_RECIPE_CANDIDATES = 60;
-const MAX_DISPLAYED_RECIPES = 40;
-
-function normalizeIngredient(name: string): string {
-    const cleaned = name
-        .trim()
-        .toLowerCase()
-        .replace(/[_-]+/g, " ")
-        .replace(/\([^)]*\)/g, " ")
-        .replace(
-            /^(?:(?:fresh|organic|frozen|canned|dried|chopped|sliced|raw|large|small|medium|ripe|peeled|grated|minced|ground|boneless|skinless|free range)\s+)+/,
-            "",
-        )
-        .replace(/\s+/g, " ")
-        .trim();
-
-    const aliases: Record<string, string> = {
-        eggs: "egg",
-        tomatoes: "tomato",
-        potatoes: "potato",
-        onions: "onion",
-        carrots: "carrot",
-        apples: "apple",
-        bananas: "banana",
-        mushrooms: "mushroom",
-        "bell peppers": "bell pepper",
-        capsicum: "bell pepper",
-        capsicums: "bell pepper",
-        scallions: "spring onion",
-        "spring onions": "spring onion",
-        "green onions": "spring onion",
-        chillies: "chili",
-        chillis: "chili",
-        courgette: "zucchini",
-        courgettes: "zucchini",
-        aubergine: "eggplant",
-        aubergines: "eggplant",
-    };
-
-    return aliases[cleaned] ?? cleaned;
-}
-
-function toMealSummary(meal: RawMeal): MealSummary | null {
-    const idMeal =
-        typeof meal.idMeal === "string" ? meal.idMeal : "";
-    const strMeal =
-        typeof meal.strMeal === "string" ? meal.strMeal : "";
-
-    if (!idMeal || !strMeal) {
-        return null;
-    }
-
-    return {
-        idMeal,
-        strMeal,
-        strMealThumb:
-            typeof meal.strMealThumb === "string"
-                ? meal.strMealThumb
-                : "",
-    };
-}
-
-async function searchMealsByIngredient(
-    ingredient: string,
-): Promise<MealSummary[]> {
-    const apiIngredient = normalizeIngredient(ingredient)
-        .replace(/\s+/g, "_");
-
-    if (!apiIngredient) {
-        return [];
-    }
-
-    const url =
-        `${MEALDB_BASE_URL}/filter.php?i=` +
-        encodeURIComponent(apiIngredient);
-
-    const response = await fetch(url);
-
-    if (!response.ok) {
-        throw new Error(
-            `Ingredient search failed for "${ingredient}" (${response.status}).`,
-        );
-    }
-
-    const data = (await response.json()) as MealApiResponse;
-
-    return (data.meals ?? [])
-        .map(toMealSummary)
-        .filter((meal): meal is MealSummary => meal !== null);
-}
-
-async function fetchMealDetails(
-    mealId: string,
-): Promise<MealDetails | null> {
-    const url =
-        `${MEALDB_BASE_URL}/lookup.php?i=` +
-        encodeURIComponent(mealId);
-
-    const response = await fetch(url);
-
-    if (!response.ok) {
-        throw new Error(
-            `Recipe detail lookup failed (${response.status}).`,
-        );
-    }
-
-    const data = (await response.json()) as MealApiResponse;
-    const rawMeal = data.meals?.[0];
-
-    if (!rawMeal) {
-        return null;
-    }
-
-    const summary = toMealSummary(rawMeal);
-
-    if (!summary) {
-        return null;
-    }
-
-    const ingredients: string[] = [];
-
-    for (let index = 1; index <= 20; index += 1) {
-        const value = rawMeal[`strIngredient${index}`];
-
-        if (typeof value === "string" && value.trim()) {
-            ingredients.push(value.trim());
-        }
-    }
-
-    return {
-        ...summary,
-        ingredients,
-    };
-}
-
-async function mapWithConcurrency<T, R>(
-    items: T[],
-    concurrency: number,
-    worker: (item: T) => Promise<R>,
-): Promise<R[]> {
-    const results = new Array<R>(items.length);
-    let nextIndex = 0;
-
-    async function runWorker() {
-        while (nextIndex < items.length) {
-            const index = nextIndex;
-            nextIndex += 1;
-
-            results[index] = await worker(items[index]);
-        }
-    }
-
-    const workerCount = Math.min(concurrency, items.length);
-
-    await Promise.all(
-        Array.from({ length: workerCount }, () => runWorker()),
-    );
-
-    return results;
-}
 export default function RecipesScreen() {
     const router = useRouter();
     const { items, isLoading: pantryLoading } = usePantry();
 
-    const [suggestions, setSuggestions] = useState<RecipeSuggestion[]>([]);
-    const [isSearching, setIsSearching] = useState(false);
-    const [hasSearched, setHasSearched] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const pantryItems = items ?? [];
 
-    // Include items expiring today or within the next seven days.
-    // Exclude items whose expiry date has already passed.
+    const [suggestions, setSuggestions] = useState<LocalRecipeMatch[]>([]);
+    const [hasSearched, setHasSearched] = useState(false);
+
+    // Never use expired items to recommend a recipe.
+    const usablePantryItems = useMemo(
+        () =>
+            pantryItems.filter(
+                (item) => daysUntilExpiry(item.expiryDate) >= 0,
+            ),
+        [pantryItems],
+    );
+
     const expiringItems = useMemo(
         () =>
-            items
-                .filter((item) => {
-                    const days = daysUntilExpiry(item.expiryDate);
-                    return days >= 0 && days <= 7;
-                })
+            usablePantryItems
+                .filter((item) => daysUntilExpiry(item.expiryDate) <= 7)
                 .sort(
                     (a, b) =>
                         daysUntilExpiry(a.expiryDate) -
                         daysUntilExpiry(b.expiryDate),
                 ),
-        [items],
+        [usablePantryItems],
     );
 
-    // Search up to six distinct ingredients, nearest expiry first.
-    const ingredientsToSearch = useMemo(
-        () =>
-            Array.from(
-                new Set(
-                    expiringItems
-                        .map((item) => normalizeIngredient(item.name))
-                        .filter(Boolean),
-                ),
-            ).slice(0, MAX_SEARCH_INGREDIENTS),
-        [expiringItems],
-    );
-
-    async function findRecipes() {
-        if (ingredientsToSearch.length === 0 || isSearching) {
+    function findRecipes() {
+        if (usablePantryItems.length === 0) {
+            setSuggestions([]);
+            setHasSearched(true);
             return;
         }
 
-        setIsSearching(true);
+        const matches = rankRecipesForPantry(
+            usablePantryItems,
+            LOCAL_RECIPE_CATALOG,
+            expiringItems,
+        );
+
+        setSuggestions(matches);
         setHasSearched(true);
-        setError(null);
-        setSuggestions([]);
-
-        try {
-            // Search each ingredient independently.
-            const searchResults = await Promise.all(
-                ingredientsToSearch.map(async (ingredient) => {
-                    try {
-                        const meals =
-                            await searchMealsByIngredient(ingredient);
-
-                        console.info(
-                            `[Recipes] "${ingredient}": ${meals.length} results`,
-                        );
-
-                        return {
-                            ingredient,
-                            meals,
-                            failed: false,
-                        };
-                    } catch (requestError) {
-                        console.warn(
-                            `[Recipes] Search failed for "${ingredient}":`,
-                            requestError,
-                        );
-
-                        return {
-                            ingredient,
-                            meals: [] as MealSummary[],
-                            failed: true,
-                        };
-                    }
-                }),
-            );
-
-            const failedCount = searchResults.filter(
-                (result) => result.failed,
-            ).length;
-
-            if (failedCount === searchResults.length) {
-                setError(
-                    "We couldn't reach the recipe service. Check your internet connection and try again.",
-                );
-                return;
-            }
-
-            // Combine the results and remember which searches found each meal.
-            // Round-robin collection prevents the first ingredient from
-            // dominating the candidate list.
-            const candidatesById = new Map<
-                string,
-                {
-                    meal: MealSummary;
-                    foundBy: Set<string>;
-                }
-            >();
-
-            const longestResultList = Math.max(
-                0,
-                ...searchResults.map((result) => result.meals.length),
-            );
-
-            for (
-                let position = 0;
-                position < longestResultList;
-                position += 1
-            ) {
-                for (const result of searchResults) {
-                    const meal = result.meals[position];
-
-                    if (!meal) {
-                        continue;
-                    }
-
-                    const existing = candidatesById.get(meal.idMeal);
-
-                    if (existing) {
-                        existing.foundBy.add(result.ingredient);
-                    } else {
-                        candidatesById.set(meal.idMeal, {
-                            meal,
-                            foundBy: new Set([result.ingredient]),
-                        });
-                    }
-                }
-            }
-
-            if (candidatesById.size === 0) {
-                setError(
-                    "The recipe database returned no results for these ingredient names. Try a simpler name, such as 'milk' rather than a brand name.",
-                );
-                return;
-            }
-
-            // Prioritize meals returned by multiple ingredient searches.
-            const candidates = Array.from(candidatesById.values())
-                .sort(
-                    (a, b) =>
-                        b.foundBy.size - a.foundBy.size ||
-                        a.meal.strMeal.localeCompare(b.meal.strMeal),
-                )
-                .slice(0, MAX_RECIPE_CANDIDATES);
-
-            // Retrieve full ingredient lists, using a small concurrency limit
-            // to avoid sending too many detail requests at the same time.
-            const detailResults = await mapWithConcurrency(
-                candidates,
-                5,
-                async (candidate) => {
-                    try {
-                        return await fetchMealDetails(
-                            candidate.meal.idMeal,
-                        );
-                    } catch (detailError) {
-                        console.warn(
-                            `[Recipes] Could not load "${candidate.meal.strMeal}":`,
-                            detailError,
-                        );
-
-                        return null;
-                    }
-                },
-            );
-
-            const detailedMeals = detailResults.filter(
-                (meal): meal is MealDetails => meal !== null,
-            );
-
-            if (detailedMeals.length === 0) {
-                setError(
-                    "We found recipe candidates but couldn't load their ingredient details. Please try again.",
-                );
-                return;
-            }
-
-            // Keep one entry per distinct expiring pantry ingredient.
-            // Use the actual pantry name for the card label.
-            const pantryIngredients: {
-                normalized: string;
-                displayName: string;
-            }[] = [];
-
-            const seenIngredients = new Set<string>();
-
-            for (const item of expiringItems) {
-                const normalized = normalizeIngredient(item.name);
-
-                if (
-                    !normalized ||
-                    seenIngredients.has(normalized)
-                ) {
-                    continue;
-                }
-
-                seenIngredients.add(normalized);
-
-                pantryIngredients.push({
-                    normalized,
-                    displayName: item.name,
-                });
-            }
-
-            // Compare the actual ingredients in each recipe with the
-            // expiring items currently in this user's pantry.
-            const rankedSuggestions: RecipeSuggestion[] = [];
-
-            for (const meal of detailedMeals) {
-                const recipeIngredientSet = new Set(
-                    meal.ingredients
-                        .map(normalizeIngredient)
-                        .filter(Boolean),
-                );
-
-                const matchedIngredients = pantryIngredients
-                    .filter((pantryIngredient) =>
-                        recipeIngredientSet.has(
-                            pantryIngredient.normalized,
-                        ),
-                    )
-                    .map((pantryIngredient) =>
-                        pantryIngredient.displayName,
-                    );
-
-                // Do not claim an ingredient matches unless it appears
-                // in the full recipe ingredient list.
-                if (matchedIngredients.length === 0) {
-                    continue;
-                }
-
-                rankedSuggestions.push({
-                    idMeal: meal.idMeal,
-                    strMeal: meal.strMeal,
-                    strMealThumb: meal.strMealThumb,
-                    matchedIngredients,
-                });
-            }
-
-            // Recipes using more of the user's expiring ingredients rank first.
-            rankedSuggestions.sort(
-                (a, b) =>
-                    b.matchedIngredients.length -
-                    a.matchedIngredients.length ||
-                    a.strMeal.localeCompare(b.strMeal),
-            );
-
-            setSuggestions(
-                rankedSuggestions.slice(0, MAX_DISPLAYED_RECIPES),
-            );
-
-            if (failedCount > 0) {
-                setError(
-                    "Some ingredient searches failed. Showing verified recipe matches from the searches that succeeded.",
-                );
-            } else {
-                setError(null);
-            }
-        } catch (searchError) {
-            console.error("Recipe search failed:", searchError);
-
-            setError(
-                "Something went wrong while finding recipes. Please try again.",
-            );
-        } finally {
-            setIsSearching(false);
-        }
     }
 
     if (pantryLoading) {
@@ -483,11 +80,8 @@ export default function RecipesScreen() {
                 className="flex-1 bg-slate-50"
                 edges={["top"]}
             >
-                <View className="flex-1 items-center justify-center px-6">
-                    <ActivityIndicator
-                        size="large"
-                        color="#047857"
-                    />
+                <View className="flex-1 items-center justify-center">
+                    <ActivityIndicator size="large" color="#047857" />
 
                     <Text className="mt-3 text-base text-slate-600">
                         Loading your pantry...
@@ -505,7 +99,7 @@ export default function RecipesScreen() {
             <FlatList
                 className="flex-1"
                 data={suggestions}
-                keyExtractor={(recipe) => recipe.idMeal}
+                keyExtractor={(match) => match.recipe.id}
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{
                     paddingHorizontal: 20,
@@ -527,8 +121,7 @@ export default function RecipesScreen() {
                                 </Text>
 
                                 <Text className="mt-2 text-base leading-6 text-slate-600">
-                                    Make something useful with ingredients
-                                    that expire soon.
+                                    Find meals that use the food you already have.
                                 </Text>
                             </View>
 
@@ -541,13 +134,12 @@ export default function RecipesScreen() {
                             </View>
                         </View>
 
-                        {/* Upcoming expiry overview */}
+                        {/* Expiring ingredients */}
                         <View className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4">
                             <View className="flex-row items-center gap-2">
                                 <CalendarClock
                                     size={20}
                                     color="#92400E"
-                                    strokeWidth={2}
                                 />
 
                                 <Text className="flex-1 text-base font-bold text-amber-900">
@@ -563,10 +155,9 @@ export default function RecipesScreen() {
 
                             {expiringItems.length === 0 ? (
                                 <Text className="mt-3 text-sm leading-5 text-amber-900">
-                                    Nothing is due to expire in the next
-                                    seven days. Add pantry items with
-                                    upcoming expiry dates to discover
-                                    relevant recipes.
+                                    Nothing expires within the next seven days.
+                                    You can still find recipes using your other
+                                    non-expired pantry ingredients.
                                 </Text>
                             ) : (
                                 <>
@@ -589,93 +180,63 @@ export default function RecipesScreen() {
                                                         {" · "}
                                                         {days === 0
                                                             ? "Today"
-                                                            : `${days}d left`}
+                                                            : days === 1
+                                                                ? "Tomorrow"
+                                                                : `${days}d left`}
                                                     </Text>
                                                 </View>
                                             );
                                         })}
                                     </View>
-
-                                    <Text className="mt-3 text-xs leading-5 text-amber-900">
-                                        We'll search up to twelve distinct ingredients,
-                                        prioritizing those with the nearest expiry dates.
-                                    </Text>
                                 </>
                             )}
                         </View>
 
-                        {/* Main search action */}
+                        {/* Local catalogue and halal notice */}
+                        <View className="mt-4 flex-row items-start gap-3 rounded-2xl border border-slate-200 bg-white p-4">
+                            <ShieldAlert
+                                size={21}
+                                color="#B45309"
+                            />
+
+                            <View className="flex-1">
+                                <Text className="text-sm font-bold text-slate-900">
+                                    Halal status
+                                </Text>
+
+                                <Text className="mt-1 text-sm leading-5 text-slate-600">
+                                    {HALAL_RECIPE_NOTICE}
+                                </Text>
+                            </View>
+                        </View>
+
+                        <Text className="mt-4 text-xs text-slate-500">
+                            {LOCAL_RECIPE_CATALOG.length} locally stored starter recipes
+                            {" · "}Works offline
+                        </Text>
+
+                        {/* Search action */}
                         <Pressable
                             accessibilityRole="button"
-                            accessibilityLabel="Find recipes using ingredients that expire soon"
-                            disabled={
-                                ingredientsToSearch.length === 0 ||
-                                isSearching
-                            }
-                            onPress={() => void findRecipes()}
-                            className={`mt-5 min-h-14 flex-row items-center justify-center gap-2 rounded-2xl px-5 py-4 ${
-                                ingredientsToSearch.length === 0 ||
-                                isSearching
+                            disabled={usablePantryItems.length === 0}
+                            onPress={findRecipes}
+                            className={`mt-4 min-h-14 flex-row items-center justify-center gap-2 rounded-2xl px-5 py-4 ${
+                                usablePantryItems.length === 0
                                     ? "bg-emerald-300"
                                     : "bg-emerald-700"
                             }`}
                         >
-                            {isSearching ? (
-                                <>
-                                    <ActivityIndicator color="#FFFFFF" />
+                            <ChefHat
+                                size={20}
+                                color="#FFFFFF"
+                            />
 
-                                    <Text className="font-bold text-white">
-                                        Finding recipes...
-                                    </Text>
-                                </>
-                            ) : (
-                                <>
-                                    <ChefHat
-                                        size={20}
-                                        color="#FFFFFF"
-                                        strokeWidth={2}
-                                    />
-
-                                    <Text className="font-bold text-white">
-                                        Find recipes
-                                    </Text>
-                                </>
-                            )}
+                            <Text className="font-bold text-white">
+                                {hasSearched
+                                    ? "Refresh recipe matches"
+                                    : "Find recipes"}
+                            </Text>
                         </Pressable>
-
-                        {/* Search errors and retry action */}
-                        {error ? (
-                            <View className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
-                                <View className="flex-row items-start gap-2">
-                                    <AlertCircle
-                                        size={19}
-                                        color="#92400E"
-                                    />
-
-                                    <Text className="flex-1 text-sm leading-5 text-amber-900">
-                                        {error}
-                                    </Text>
-                                </View>
-
-                                {ingredientsToSearch.length > 0 ? (
-                                    <Pressable
-                                        accessibilityRole="button"
-                                        onPress={() => void findRecipes()}
-                                        disabled={isSearching}
-                                        className="mt-3 flex-row items-center gap-2 self-start rounded-lg py-2"
-                                    >
-                                        <RefreshCw
-                                            size={16}
-                                            color="#92400E"
-                                        />
-
-                                        <Text className="font-bold text-amber-900">
-                                            Try again
-                                        </Text>
-                                    </Pressable>
-                                ) : null}
-                            </View>
-                        ) : null}
 
                         {/* Results heading */}
                         {suggestions.length > 0 ? (
@@ -685,157 +246,186 @@ export default function RecipesScreen() {
                                 </Text>
 
                                 <Text className="mt-1 text-sm leading-5 text-slate-500">
-                                    Ranked by the number of matching
-                                    ingredients that are expiring soon.
+                                    Ranked by expiring ingredients first, then
+                                    by the number of pantry ingredients used.
+                                </Text>
+
+                                <Text className="mt-1 text-xs text-slate-500">
+                                    {suggestions.length} matching recipes
                                 </Text>
                             </View>
                         ) : null}
                     </View>
                 }
-                renderItem={({ item: recipe }) => (
-                    <Pressable
-                        accessibilityRole="button"
-                        accessibilityLabel={`View recipe details for ${recipe.strMeal}`}
-                        onPress={() =>
-                            router.push({
-                                pathname: "/recipe/[id]",
-                                params: { id: recipe.idMeal },
-                            })
-                        }
-                        className="mb-4 w-full overflow-hidden rounded-2xl border border-slate-200 bg-white"
-                    >
-                        {recipe.strMealThumb ? (
-                            <Image
-                                source={{ uri: recipe.strMealThumb }}
-                                resizeMode="cover"
-                                style={{
-                                    width: "100%",
-                                    height: 190,
-                                }}
-                            />
-                        ) : (
-                            <View className="h-40 items-center justify-center bg-slate-100">
-                                <ImageOff
-                                    size={28}
-                                    color="#94A3B8"
-                                    strokeWidth={1.8}
-                                />
+                renderItem={({ item: match }) => {
+                    const recipe = match.recipe;
 
-                                <Text className="mt-2 text-sm text-slate-500">
-                                    Image unavailable
-                                </Text>
+                    const ingredientsToShow =
+                        match.matchedExpiringIngredients.length > 0
+                            ? match.matchedExpiringIngredients
+                            : match.matchedIngredients;
+
+                    return (
+                        <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel={`View recipe details for ${recipe.title}`}
+                            onPress={() =>
+                                router.push({
+                                    pathname: "/recipe/[id]",
+                                    params: { id: recipe.id },
+                                })
+                            }
+                            className="mb-4 w-full overflow-hidden rounded-2xl border border-slate-200 bg-white"
+                        >
+                            <View className="flex-row items-start gap-3 p-4">
+                                <View className="h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-50">
+                                    <Utensils
+                                        size={23}
+                                        color="#047857"
+                                        strokeWidth={1.8}
+                                    />
+                                </View>
+
+                                <View className="min-w-0 flex-1">
+                                    <Text className="text-lg font-bold leading-6 text-slate-900">
+                                        {recipe.title}
+                                    </Text>
+
+                                    <Text className="mt-1 text-sm leading-5 text-slate-600">
+                                        {recipe.description}
+                                    </Text>
+                                </View>
                             </View>
-                        )}
 
-                        <View className="p-4">
-                            <Text className="text-lg font-bold leading-6 text-slate-900">
-                                {recipe.strMeal}
-                            </Text>
+                            <View className="px-4">
+                                <View className="flex-row flex-wrap gap-2">
+                                    <View className="flex-row items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1.5">
+                                        <Clock size={13} color="#475569" />
 
-                            <Text className="mt-2 text-sm font-semibold text-emerald-800">
-                                Matches {recipe.matchedIngredients.length}{" "}
-                                expiring{" "}
-                                {recipe.matchedIngredients.length === 1
-                                    ? "ingredient"
-                                    : "ingredients"}
-                            </Text>
+                                        <Text className="text-xs font-semibold text-slate-700">
+                                            {recipe.prepMinutes +
+                                                recipe.cookMinutes} min total
+                                        </Text>
+                                    </View>
 
-                            <View className="mt-3 flex-row flex-wrap gap-2">
-                                {recipe.matchedIngredients.map(
-                                    (ingredient) => (
-                                        <View
-                                            key={ingredient}
-                                            className="rounded-full bg-emerald-50 px-3 py-1.5"
-                                        >
-                                            <Text className="text-xs font-medium text-emerald-800">
-                                                {ingredient.replace(/_/g, " ")}
-                                            </Text>
-                                        </View>
-                                    ),
+                                    <View className="rounded-full bg-amber-50 px-2.5 py-1.5">
+                                        <Text className="text-xs font-semibold text-amber-800">
+                                            Not halal-certified
+                                        </Text>
+                                    </View>
+                                </View>
+
+                                <View className="mt-4">
+                                    <Text className="text-sm font-bold text-slate-800">
+                                        {match.expiringMatchCount > 0
+                                            ? `Uses ${match.expiringMatchCount} expiring ingredient${match.expiringMatchCount === 1 ? "" : "s"}`
+                                            : `Matches ${match.matchedCount} pantry ingredient${match.matchedCount === 1 ? "" : "s"}`}
+                                    </Text>
+
+                                    <View className="mt-2 flex-row flex-wrap gap-2">
+                                        {ingredientsToShow.map((name) => (
+                                            <View
+                                                key={name}
+                                                className="rounded-full bg-emerald-50 px-3 py-1.5"
+                                            >
+                                                <Text className="text-xs font-semibold text-emerald-800">
+                                                    {name}
+                                                </Text>
+                                            </View>
+                                        ))}
+                                    </View>
+                                </View>
+
+                                {match.missingIngredients.length > 0 ? (
+                                    <View className="mt-4">
+                                        <Text className="text-sm font-semibold text-slate-700">
+                                            Also needed
+                                        </Text>
+
+                                        <Text className="mt-1 text-sm leading-5 text-slate-500">
+                                            {match.missingIngredients
+                                                .slice(0, 4)
+                                                .map((ingredient) => ingredient.name)
+                                                .join(", ")}
+                                            {match.missingIngredients.length > 4
+                                                ? `, +${match.missingIngredients.length - 4} more`
+                                                : ""}
+                                        </Text>
+                                    </View>
+                                ) : (
+                                    <Text className="mt-3 text-sm font-semibold text-emerald-700">
+                                        You have all the required ingredients.
+                                    </Text>
                                 )}
-                            </View>
 
-                            <View className="mt-4 flex-row items-center justify-between border-t border-slate-100 pt-3">
-                                <Text className="font-bold text-emerald-700">
-                                    View recipe
-                                </Text>
+                                <View className="mt-4 flex-row items-center justify-between border-t border-slate-100 py-4">
+                                    <Text className="font-bold text-emerald-700">
+                                        View recipe
+                                    </Text>
 
-                                <ArrowRight
-                                    size={20}
-                                    color="#047857"
-                                    strokeWidth={2}
-                                />
+                                    <ArrowRight
+                                        size={20}
+                                        color="#047857"
+                                    />
+                                </View>
                             </View>
-                        </View>
-                    </Pressable>
-                )}
+                        </Pressable>
+                    );
+                }}
                 ListEmptyComponent={
                     <View className="items-center rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-8">
                         <View className="h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50">
-                            {error ? (
-                                <AlertCircle
-                                    size={30}
-                                    color="#B45309"
-                                    strokeWidth={1.8}
-                                />
-                            ) : !hasSearched ? (
-                                ingredientsToSearch.length > 0 ? (
-                                    <Salad
-                                        size={30}
-                                        color="#047857"
-                                        strokeWidth={1.8}
-                                    />
-                                ) : (
-                                    <Sprout
-                                        size={30}
-                                        color="#047857"
-                                        strokeWidth={1.8}
-                                    />
-                                )
-                            ) : (
-                                <Utensils
-                                    size={30}
-                                    color="#64748B"
-                                    strokeWidth={1.8}
-                                />
-                            )}
+                            <ChefHat
+                                size={29}
+                                color="#047857"
+                            />
                         </View>
 
                         <Text className="mt-4 text-center text-lg font-bold text-slate-900">
-                            {error
-                                ? "Recipes are unavailable"
-                                : !hasSearched
-                                    ? ingredientsToSearch.length > 0
-                                        ? "Ready to find a meal?"
-                                        : "Nothing expiring soon"
-                                    : "No matching recipes found"}
+                            {!hasSearched
+                                ? usablePantryItems.length > 0
+                                    ? "Ready to find a recipe?"
+                                    : pantryItems.length === 0
+                                        ? "Your pantry is empty"
+                                        : "No usable ingredients"
+                            : "No matching recipes yet"}
                         </Text>
 
                         <Text className="mt-2 text-center text-sm leading-6 text-slate-500">
-                            {error
-                                ? "Check your connection and try again."
-                                : !hasSearched
-                                    ? ingredientsToSearch.length > 0
-                                        ? "Tap Find recipes to search for meals using your expiring ingredients."
-                                        : "Your pantry is looking good. Check back when some ingredients are nearing their expiry dates."
-                                    : "Try adding an ingredient with a common name, or try again when your pantry has different items."}
+                            {!hasSearched
+                                ? usablePantryItems.length > 0
+                                    ? "Tap Find recipes to match your ingredients against the local catalogue."
+                                    : pantryItems.length === 0
+                                        ? "Add pantry items to discover recipes that use them."
+                                        : "Your saved items are expired. Add or update ingredients to find recipes using usable food."
+                                : "The current local catalogue may not contain a recipe for these ingredients yet. You can expand it by adding more recipe entries."}
                         </Text>
 
                         {!hasSearched &&
-                        ingredientsToSearch.length === 0 ? (
+                        usablePantryItems.length === 0 ? (
                             <Pressable
                                 accessibilityRole="button"
                                 onPress={() => router.push("/add-item")}
                                 className="mt-5 min-h-12 flex-row items-center justify-center gap-2 rounded-xl bg-emerald-700 px-5 py-3"
                             >
-                                <Plus
-                                    size={18}
-                                    color="#FFFFFF"
-                                    strokeWidth={2.2}
-                                />
+                                <Plus size={18} color="#FFFFFF" />
 
                                 <Text className="font-bold text-white">
                                     Add pantry item
+                                </Text>
+                            </Pressable>
+                        ) : null}
+
+                        {hasSearched && usablePantryItems.length > 0 ? (
+                            <Pressable
+                                accessibilityRole="button"
+                                onPress={() => router.push("/pantry")}
+                                className="mt-5 min-h-12 flex-row items-center justify-center gap-2 rounded-xl bg-emerald-700 px-5 py-3"
+                            >
+                                <Plus size={18} color="#FFFFFF" />
+
+                                <Text className="font-bold text-white">
+                                    Manage pantry
                                 </Text>
                             </Pressable>
                         ) : null}

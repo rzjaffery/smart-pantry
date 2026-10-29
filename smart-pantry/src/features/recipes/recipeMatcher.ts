@@ -2,6 +2,7 @@
 import type { PantryItem } from "@/types/pantry";
 
 import { LOCAL_RECIPE_CATALOG } from "./recipeCatalog";
+
 import type {
     LocalRecipe,
     LocalRecipeMatch,
@@ -14,13 +15,13 @@ const INGREDIENT_ALIASES: Record<string, string> = {
     "egg white": "egg",
 
     tomatoes: "tomato",
-    "cherry tomatoes": "tomato",
     potatoes: "potato",
     onions: "onion",
     carrots: "carrot",
     apples: "apple",
     bananas: "banana",
     mushrooms: "mushroom",
+
     "bell peppers": "bell pepper",
     capsicum: "bell pepper",
     capsicums: "bell pepper",
@@ -34,6 +35,7 @@ const INGREDIENT_ALIASES: Record<string, string> = {
     cocoa: "cocoa powder",
 
     "all purpose flour": "flour",
+    "all-purpose flour": "flour",
     "plain flour": "flour",
     maida: "flour",
     atta: "whole wheat flour",
@@ -57,7 +59,7 @@ const INGREDIENT_ALIASES: Record<string, string> = {
     "green peas": "peas",
     "frozen peas": "peas",
 
-    "chickpeas": "chickpea",
+    chickpeas: "chickpea",
     "chick pea": "chickpea",
     "garbanzo beans": "chickpea",
 
@@ -96,13 +98,23 @@ function getIngredientKeys(
     );
 }
 
-function ingredientMatchesPantry(
+/**
+ * Determines whether a recipe ingredient can be matched to
+ * at least one ingredient currently available in the pantry.
+ *
+ * The caller decides whether expired pantry items are eligible.
+ */
+export function isIngredientAvailable(
     ingredient: RecipeIngredient,
-    pantryKeys: Set<string>,
+    pantryItems: readonly PantryItem[],
 ): boolean {
-    const ingredientKeys = getIngredientKeys(ingredient);
+    const pantryKeys = new Set(
+        pantryItems
+            .map((item) => normalizeIngredientKey(item.name))
+            .filter(Boolean),
+    );
 
-    for (const key of ingredientKeys) {
+    for (const key of getIngredientKeys(ingredient)) {
         if (pantryKeys.has(key)) {
             return true;
         }
@@ -114,9 +126,9 @@ function ingredientMatchesPantry(
 export function rankRecipesForPantry(
     pantryItems: readonly PantryItem[],
     recipes: readonly LocalRecipe[] = LOCAL_RECIPE_CATALOG,
+    priorityItems: readonly PantryItem[] = [],
 ): LocalRecipeMatch[] {
-    // Map: canonical ingredient key -> a display name from the pantry.
-    // This prevents duplicate item names from inflating the match count.
+    // Map: normalized ingredient key -> display name.
     const pantryByKey = new Map<string, string>();
 
     for (const item of pantryItems) {
@@ -129,6 +141,19 @@ export function rankRecipesForPantry(
 
     const pantryKeys = new Set(pantryByKey.keys());
 
+    // A second map allows us to prioritize expiring ingredients.
+    const priorityByKey = new Map<string, string>();
+
+    for (const item of priorityItems) {
+        const key = normalizeIngredientKey(item.name);
+
+        if (key && pantryByKey.has(key) && !priorityByKey.has(key)) {
+            priorityByKey.set(key, item.name);
+        }
+    }
+
+    const priorityKeys = new Set(priorityByKey.keys());
+
     const matches: LocalRecipeMatch[] = [];
 
     for (const recipe of recipes) {
@@ -136,63 +161,83 @@ export function rankRecipesForPantry(
             (ingredient) => !ingredient.optional,
         );
 
-        const matchedRecipeIngredients =
-            requiredIngredients.filter((ingredient) =>
-                ingredientMatchesPantry(ingredient, pantryKeys),
+        const matchedRequired: RecipeIngredient[] = [];
+        const missingIngredients: RecipeIngredient[] = [];
+
+        const matchedKeys = new Set<string>();
+        const matchedPriorityKeys = new Set<string>();
+
+        for (const ingredient of requiredIngredients) {
+            const keys = Array.from(getIngredientKeys(ingredient));
+
+            const availableKeys = keys.filter((key) =>
+                pantryKeys.has(key),
             );
 
-        const missingIngredients = requiredIngredients.filter(
-            (ingredient) =>
-                !ingredientMatchesPantry(ingredient, pantryKeys),
-        );
+            if (availableKeys.length === 0) {
+                missingIngredients.push(ingredient);
+                continue;
+            }
 
-        // Count distinct pantry ingredient keys used by this recipe.
-        // For example, a recipe cannot count two different entries
-        // for "egg" as two separate ingredient types.
-        const matchedKeys = new Set<string>();
+            matchedRequired.push(ingredient);
 
-        for (const ingredient of matchedRecipeIngredients) {
-            for (const key of getIngredientKeys(ingredient)) {
-                if (pantryKeys.has(key)) {
-                    matchedKeys.add(key);
-                    break;
-                }
+            // Prefer an expiring pantry ingredient if it matches.
+            // Otherwise, use the first available ingredient key.
+            const priorityKey = availableKeys.find((key) =>
+                priorityKeys.has(key),
+            );
+
+            const selectedKey = priorityKey ?? availableKeys[0];
+
+            matchedKeys.add(selectedKey);
+
+            if (priorityKey) {
+                matchedPriorityKeys.add(priorityKey);
             }
         }
 
+        // Don't show recipes that match none of the user's ingredients.
         if (matchedKeys.size === 0) {
             continue;
         }
 
-        const matchedIngredients = Array.from(matchedKeys)
+        const matchedIngredientKeys = Array.from(matchedKeys);
+
+        const matchedIngredients = matchedIngredientKeys
             .map((key) => pantryByKey.get(key))
             .filter((name): name is string => Boolean(name));
 
-        const requiredIngredientCount =
-            requiredIngredients.length;
+        const matchedExpiringIngredients = Array.from(
+            matchedPriorityKeys,
+        )
+            .map((key) => priorityByKey.get(key))
+            .filter((name): name is string => Boolean(name));
+
+        const requiredIngredientCount = requiredIngredients.length;
 
         const matchRatio =
             requiredIngredientCount === 0
                 ? 0
-                : matchedRecipeIngredients.length /
-                requiredIngredientCount;
+                : matchedRequired.length / requiredIngredientCount;
 
         matches.push({
             recipe,
             matchedIngredients,
-            matchedIngredientKeys: Array.from(matchedKeys),
+            matchedExpiringIngredients,
+            matchedIngredientKeys,
             missingIngredients,
             matchedCount: matchedKeys.size,
+            expiringMatchCount: matchedPriorityKeys.size,
             requiredIngredientCount,
             matchRatio,
         });
     }
 
-    // Rank recipes that use the most different pantry ingredients first.
-    // On a tie, prefer recipes requiring a larger proportion of items
-    // already present in the pantry. Use the title for stable ordering.
+    // First prioritize recipes that use more expiring ingredients.
+    // Then prefer recipes that use more of the available pantry.
     return matches.sort(
         (a, b) =>
+            b.expiringMatchCount - a.expiringMatchCount ||
             b.matchedCount - a.matchedCount ||
             b.matchRatio - a.matchRatio ||
             a.recipe.title.localeCompare(b.recipe.title),

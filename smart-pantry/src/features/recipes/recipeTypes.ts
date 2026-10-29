@@ -38,16 +38,20 @@ export type LocalRecipe = {
 export type LocalRecipeMatch = {
     recipe: LocalRecipe;
 
-    // Names of the user's pantry items that match this recipe.
+    // Pantry ingredients used by this recipe.
     matchedIngredients: string[];
 
-    // Canonical keys used by the matching algorithm.
+    // The subset of matches that are expiring soon.
+    matchedExpiringIngredients: string[];
+
+    // Canonical keys help avoid duplicate ingredient matches.
     matchedIngredientKeys: string[];
 
-    // Recipe ingredients not found in the supplied pantry items.
+    // Required ingredients not present in the usable pantry.
     missingIngredients: RecipeIngredient[];
 
     matchedCount: number;
+    expiringMatchCount: number;
     requiredIngredientCount: number;
     matchRatio: number;
 };
