@@ -28,6 +28,27 @@ import {
     type PantryOutcome,
 } from "../types/pantry";
 import { Check, Pencil, Trash2, X } from "lucide-react-native";
+import {Picker} from "@react-native-picker/picker";
+
+const UNIT_OPTIONS = [
+    { label: "Pieces", value: "pieces" },
+    { label: "Kilograms (kg)", value: "kg" },
+    { label: "Grams (g)", value: "g" },
+    { label: "Litres (L)", value: "litre" },
+    { label: "Millilitres (ml)", value: "ml" },
+    { label: "Carton", value: "carton" },
+    { label: "Bottle", value: "bottle" },
+    { label: "Can", value: "can" },
+    { label: "Jar", value: "jar" },
+    { label: "Pack", value: "pack" },
+    { label: "Packet", value: "packet" },
+    { label: "Bag", value: "bag" },
+    { label: "Dozen", value: "dozen" },
+    { label: "Bunch", value: "bunch" },
+    { label: "Loaf", value: "loaf" },
+    { label: "Slice", value: "slice" },
+    { label: "Cup", value: "cup" },
+] as const;
 
 type SwipeablePantryItemProps = {
     item: PantryItem;
@@ -315,7 +336,7 @@ export function SwipeablePantryItem({
                                 className="mt-5 flex-row items-center rounded-xl bg-emerald-50 px-4 py-4"
                             >
                                 <Pencil size={21} color="#047857" strokeWidth={2} />
-                                <View className="flex-1">
+                                <View className="flex-1 pl-3">
                                     <Text className="font-bold text-emerald-800">
                                         Edit item
                                     </Text>
@@ -337,7 +358,7 @@ export function SwipeablePantryItem({
                                         strokeWidth={2}
                                     />
                                 </View>
-                                <View className="flex-1">
+                                <View className="flex-1 pl-1 ">
                                     <Text className="font-bold text-rose-700">
                                         Delete item
                                     </Text>
@@ -427,27 +448,50 @@ export function SwipeablePantryItem({
                                     />
                                 </View>
 
-                                <View className="mt-4">
-                                    <Text className="mb-2 text-sm font-semibold text-slate-800">
-                                        Quantity and unit
-                                    </Text>
+                                <View className="flex-row gap-3 pt-4">
+                                    <View className="flex-1">
+                                        <Text className="mb-2 text-xs font-medium text-slate-500">
+                                            Amount
+                                        </Text>
 
-                                    <View className="flex-row gap-3">
                                         <TextInput
                                             value={quantity}
                                             onChangeText={setQuantity}
                                             placeholder="1"
+                                            placeholderTextColor="#94A3B8"
                                             keyboardType="decimal-pad"
-                                            className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-3 text-base text-slate-900"
+                                            className="rounded-xl border border-slate-200 bg-white px-4 py-4 text-base text-slate-900"
                                         />
+                                    </View>
 
-                                        <TextInput
-                                            value={unit}
-                                            onChangeText={setUnit}
-                                            placeholder="e.g. kg"
-                                            maxLength={20}
-                                            className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-3 text-base text-slate-900"
-                                        />
+                                    <View className="flex-1">
+                                        <Text className="mb-2 text-xs font-medium text-slate-500">
+                                            Unit
+                                        </Text>
+
+                                        <View className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                                            <Picker
+                                                selectedValue={unit}
+                                                onValueChange={(value: string) =>
+                                                    setUnit(value)
+                                                }
+                                                mode="dropdown"
+                                                dropdownIconColor="#047857"
+                                                prompt="Select a unit"
+                                                style={{
+                                                    height: 52,
+                                                    color: "#0F172A",
+                                                }}
+                                            >
+                                                {UNIT_OPTIONS.map((option) => (
+                                                    <Picker.Item
+                                                        key={option.value}
+                                                        label={option.label}
+                                                        value={option.value}
+                                                    />
+                                                ))}
+                                            </Picker>
+                                        </View>
                                     </View>
                                 </View>
 

@@ -81,7 +81,7 @@ export function PantryItemCard({ item }: PantryItemCardProps) {
                         </View>
                     </View>
 
-                    <View className="mt-4 flex-row flex-wrap gap-x-4 gap-y-3 border-t border-slate-100 pt-3">
+                    <View className="mt-4 flex-row gap-x-4 gap-y-3 border-t border-slate-100 pt-3">
                         <View className="flex-row items-center gap-2">
                             <View
                                 className={`h-9 w-9 items-center justify-center rounded-lg ${iconBackgroundClass}`}
@@ -93,7 +93,7 @@ export function PantryItemCard({ item }: PantryItemCardProps) {
                                 />
                             </View>
 
-                            <View className="flex-1">
+                            <View className="flex-2">
                                 <Text className="text-xs text-slate-500">
                                     Storage location
                                 </Text>
