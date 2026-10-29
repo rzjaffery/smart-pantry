@@ -7,9 +7,12 @@ import { PantryProvider } from "@/context/PantryContext";
 
 export default function RootLayout() {
     return (
-        <GestureHandlerRootView style={{ flex: 1 }}>
+        <GestureHandlerRootView style={{flex: 1}}>
             <PantryProvider>
-                <Stack screenOptions={{ headerShown: false }} />
+                <Stack screenOptions={{headerShown: false}}>
+                    <Stack.Screen name={'(tabs)'}/>
+                    <Stack.Screen name={'add-item'}/>
+                </Stack>
             </PantryProvider>
         </GestureHandlerRootView>
     );

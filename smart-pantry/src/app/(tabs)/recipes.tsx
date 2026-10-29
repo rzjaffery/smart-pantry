@@ -11,12 +11,12 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 
-import { usePantry } from "../context/PantryContext";
-import { daysUntilExpiry } from "../lib/expiry";
+import { usePantry } from "../../context/PantryContext";
+import { daysUntilExpiry } from "../../lib/expiry";
 import {
     searchMealsByIngredient,
     type MealSummary,
-} from "../features/recipes/mealdb";
+} from "../../features/recipes/mealdb";
 
 type RecipeSuggestion = MealSummary & {
     matchedIngredients: string[];

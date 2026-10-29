@@ -2,11 +2,10 @@ import { useMemo, useState } from "react";
 import {Pressable,ScrollView,Text,TextInput,View,} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-
-import { SwipeablePantryItem } from "../components/SwipeablePantryItem";
+import { SwipeablePantryItem } from "@/components/SwipeablePantryItem";
 import { usePantry } from "@/context/PantryContext";
 import { daysUntilExpiry } from "@/lib/expiry";
-import { PANTRY_LOCATIONS, PantryOutcome} from "@/types/pantry";
+import { PANTRY_LOCATIONS} from "@/types/pantry";
 type ExpiryFilter = "all" | "soon" | "expired" | "later";
 type PantrySort = "expiry" | "name";
 
