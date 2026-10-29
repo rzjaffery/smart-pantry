@@ -24,23 +24,41 @@ import {
 
 import { usePantry } from "@/context/PantryContext";
 import { daysUntilExpiry } from "@/lib/expiry";
-import {
-    searchMealsByIngredient,
-    type MealSummary,
-} from "@/features/recipes/mealdb";
+import type { MealSummary } from "@/features/recipes/mealdb";
 
 type RecipeSuggestion = MealSummary & {
     matchedIngredients: string[];
 };
 
+type RawMeal = Record<string, unknown>;
+
+type MealApiResponse = {
+    meals?: RawMeal[] | null;
+};
+
+type MealDetails = MealSummary & {
+    ingredients: string[];
+};
+
+const MEALDB_BASE_URL =
+    "https://www.themealdb.com/api/json/v1/1";
+
+const MAX_SEARCH_INGREDIENTS = 12;
+const MAX_RECIPE_CANDIDATES = 60;
+const MAX_DISPLAYED_RECIPES = 40;
+
 function normalizeIngredient(name: string): string {
     const cleaned = name
         .trim()
         .toLowerCase()
+        .replace(/[_-]+/g, " ")
+        .replace(/\([^)]*\)/g, " ")
         .replace(
-            /^(fresh|organic|frozen|canned|dried|chopped|sliced|raw)\s+/,
+            /^(?:(?:fresh|organic|frozen|canned|dried|chopped|sliced|raw|large|small|medium|ripe|peeled|grated|minced|ground|boneless|skinless|free range)\s+)+/,
             "",
-        );
+        )
+        .replace(/\s+/g, " ")
+        .trim();
 
     const aliases: Record<string, string> = {
         eggs: "egg",
@@ -52,11 +70,140 @@ function normalizeIngredient(name: string): string {
         bananas: "banana",
         mushrooms: "mushroom",
         "bell peppers": "bell pepper",
+        capsicum: "bell pepper",
+        capsicums: "bell pepper",
+        scallions: "spring onion",
+        "spring onions": "spring onion",
+        "green onions": "spring onion",
+        chillies: "chili",
+        chillis: "chili",
+        courgette: "zucchini",
+        courgettes: "zucchini",
+        aubergine: "eggplant",
+        aubergines: "eggplant",
     };
 
     return aliases[cleaned] ?? cleaned;
 }
 
+function toMealSummary(meal: RawMeal): MealSummary | null {
+    const idMeal =
+        typeof meal.idMeal === "string" ? meal.idMeal : "";
+    const strMeal =
+        typeof meal.strMeal === "string" ? meal.strMeal : "";
+
+    if (!idMeal || !strMeal) {
+        return null;
+    }
+
+    return {
+        idMeal,
+        strMeal,
+        strMealThumb:
+            typeof meal.strMealThumb === "string"
+                ? meal.strMealThumb
+                : "",
+    };
+}
+
+async function searchMealsByIngredient(
+    ingredient: string,
+): Promise<MealSummary[]> {
+    const apiIngredient = normalizeIngredient(ingredient)
+        .replace(/\s+/g, "_");
+
+    if (!apiIngredient) {
+        return [];
+    }
+
+    const url =
+        `${MEALDB_BASE_URL}/filter.php?i=` +
+        encodeURIComponent(apiIngredient);
+
+    const response = await fetch(url);
+
+    if (!response.ok) {
+        throw new Error(
+            `Ingredient search failed for "${ingredient}" (${response.status}).`,
+        );
+    }
+
+    const data = (await response.json()) as MealApiResponse;
+
+    return (data.meals ?? [])
+        .map(toMealSummary)
+        .filter((meal): meal is MealSummary => meal !== null);
+}
+
+async function fetchMealDetails(
+    mealId: string,
+): Promise<MealDetails | null> {
+    const url =
+        `${MEALDB_BASE_URL}/lookup.php?i=` +
+        encodeURIComponent(mealId);
+
+    const response = await fetch(url);
+
+    if (!response.ok) {
+        throw new Error(
+            `Recipe detail lookup failed (${response.status}).`,
+        );
+    }
+
+    const data = (await response.json()) as MealApiResponse;
+    const rawMeal = data.meals?.[0];
+
+    if (!rawMeal) {
+        return null;
+    }
+
+    const summary = toMealSummary(rawMeal);
+
+    if (!summary) {
+        return null;
+    }
+
+    const ingredients: string[] = [];
+
+    for (let index = 1; index <= 20; index += 1) {
+        const value = rawMeal[`strIngredient${index}`];
+
+        if (typeof value === "string" && value.trim()) {
+            ingredients.push(value.trim());
+        }
+    }
+
+    return {
+        ...summary,
+        ingredients,
+    };
+}
+
+async function mapWithConcurrency<T, R>(
+    items: T[],
+    concurrency: number,
+    worker: (item: T) => Promise<R>,
+): Promise<R[]> {
+    const results = new Array<R>(items.length);
+    let nextIndex = 0;
+
+    async function runWorker() {
+        while (nextIndex < items.length) {
+            const index = nextIndex;
+            nextIndex += 1;
+
+            results[index] = await worker(items[index]);
+        }
+    }
+
+    const workerCount = Math.min(concurrency, items.length);
+
+    await Promise.all(
+        Array.from({ length: workerCount }, () => runWorker()),
+    );
+
+    return results;
+}
 export default function RecipesScreen() {
     const router = useRouter();
     const { items, isLoading: pantryLoading } = usePantry();
@@ -92,7 +239,7 @@ export default function RecipesScreen() {
                         .map((item) => normalizeIngredient(item.name))
                         .filter(Boolean),
                 ),
-            ).slice(0, 6),
+            ).slice(0, MAX_SEARCH_INGREDIENTS),
         [expiringItems],
     );
 
@@ -107,12 +254,16 @@ export default function RecipesScreen() {
         setSuggestions([]);
 
         try {
-            // A failed ingredient search won't discard successful results.
-            const results = await Promise.all(
+            // Search each ingredient independently.
+            const searchResults = await Promise.all(
                 ingredientsToSearch.map(async (ingredient) => {
                     try {
                         const meals =
                             await searchMealsByIngredient(ingredient);
+
+                        console.info(
+                            `[Recipes] "${ingredient}": ${meals.length} results`,
+                        );
 
                         return {
                             ingredient,
@@ -121,7 +272,7 @@ export default function RecipesScreen() {
                         };
                     } catch (requestError) {
                         console.warn(
-                            `Recipe search failed for ${ingredient}:`,
+                            `[Recipes] Search failed for "${ingredient}":`,
                             requestError,
                         );
 
@@ -134,62 +285,190 @@ export default function RecipesScreen() {
                 }),
             );
 
-            const failedCount = results.filter(
+            const failedCount = searchResults.filter(
                 (result) => result.failed,
             ).length;
 
-            if (failedCount === results.length) {
+            if (failedCount === searchResults.length) {
                 setError(
                     "We couldn't reach the recipe service. Check your internet connection and try again.",
                 );
                 return;
             }
 
-            const mealsById = new Map<string, RecipeSuggestion>();
+            // Combine the results and remember which searches found each meal.
+            // Round-robin collection prevents the first ingredient from
+            // dominating the candidate list.
+            const candidatesById = new Map<
+                string,
+                {
+                    meal: MealSummary;
+                    foundBy: Set<string>;
+                }
+            >();
 
-            for (const result of results) {
-                if (result.failed) continue;
+            const longestResultList = Math.max(
+                0,
+                ...searchResults.map((result) => result.meals.length),
+            );
 
-                for (const meal of result.meals) {
-                    const existing = mealsById.get(meal.idMeal);
+            for (
+                let position = 0;
+                position < longestResultList;
+                position += 1
+            ) {
+                for (const result of searchResults) {
+                    const meal = result.meals[position];
+
+                    if (!meal) {
+                        continue;
+                    }
+
+                    const existing = candidatesById.get(meal.idMeal);
 
                     if (existing) {
-                        if (
-                            !existing.matchedIngredients.includes(
-                                result.ingredient,
-                            )
-                        ) {
-                            existing.matchedIngredients.push(
-                                result.ingredient,
-                            );
-                        }
+                        existing.foundBy.add(result.ingredient);
                     } else {
-                        mealsById.set(meal.idMeal, {
-                            ...meal,
-                            matchedIngredients: [result.ingredient],
+                        candidatesById.set(meal.idMeal, {
+                            meal,
+                            foundBy: new Set([result.ingredient]),
                         });
                     }
                 }
             }
 
-            const rankedSuggestions = Array.from(mealsById.values())
+            if (candidatesById.size === 0) {
+                setError(
+                    "The recipe database returned no results for these ingredient names. Try a simpler name, such as 'milk' rather than a brand name.",
+                );
+                return;
+            }
+
+            // Prioritize meals returned by multiple ingredient searches.
+            const candidates = Array.from(candidatesById.values())
                 .sort(
                     (a, b) =>
-                        b.matchedIngredients.length -
-                        a.matchedIngredients.length ||
-                        a.strMeal.localeCompare(b.strMeal),
+                        b.foundBy.size - a.foundBy.size ||
+                        a.meal.strMeal.localeCompare(b.meal.strMeal),
                 )
-                .slice(0, 20);
+                .slice(0, MAX_RECIPE_CANDIDATES);
 
-            setSuggestions(rankedSuggestions);
+            // Retrieve full ingredient lists, using a small concurrency limit
+            // to avoid sending too many detail requests at the same time.
+            const detailResults = await mapWithConcurrency(
+                candidates,
+                5,
+                async (candidate) => {
+                    try {
+                        return await fetchMealDetails(
+                            candidate.meal.idMeal,
+                        );
+                    } catch (detailError) {
+                        console.warn(
+                            `[Recipes] Could not load "${candidate.meal.strMeal}":`,
+                            detailError,
+                        );
+
+                        return null;
+                    }
+                },
+            );
+
+            const detailedMeals = detailResults.filter(
+                (meal): meal is MealDetails => meal !== null,
+            );
+
+            if (detailedMeals.length === 0) {
+                setError(
+                    "We found recipe candidates but couldn't load their ingredient details. Please try again.",
+                );
+                return;
+            }
+
+            // Keep one entry per distinct expiring pantry ingredient.
+            // Use the actual pantry name for the card label.
+            const pantryIngredients: {
+                normalized: string;
+                displayName: string;
+            }[] = [];
+
+            const seenIngredients = new Set<string>();
+
+            for (const item of expiringItems) {
+                const normalized = normalizeIngredient(item.name);
+
+                if (
+                    !normalized ||
+                    seenIngredients.has(normalized)
+                ) {
+                    continue;
+                }
+
+                seenIngredients.add(normalized);
+
+                pantryIngredients.push({
+                    normalized,
+                    displayName: item.name,
+                });
+            }
+
+            // Compare the actual ingredients in each recipe with the
+            // expiring items currently in this user's pantry.
+            const rankedSuggestions: RecipeSuggestion[] = [];
+
+            for (const meal of detailedMeals) {
+                const recipeIngredientSet = new Set(
+                    meal.ingredients
+                        .map(normalizeIngredient)
+                        .filter(Boolean),
+                );
+
+                const matchedIngredients = pantryIngredients
+                    .filter((pantryIngredient) =>
+                        recipeIngredientSet.has(
+                            pantryIngredient.normalized,
+                        ),
+                    )
+                    .map((pantryIngredient) =>
+                        pantryIngredient.displayName,
+                    );
+
+                // Do not claim an ingredient matches unless it appears
+                // in the full recipe ingredient list.
+                if (matchedIngredients.length === 0) {
+                    continue;
+                }
+
+                rankedSuggestions.push({
+                    idMeal: meal.idMeal,
+                    strMeal: meal.strMeal,
+                    strMealThumb: meal.strMealThumb,
+                    matchedIngredients,
+                });
+            }
+
+            // Recipes using more of the user's expiring ingredients rank first.
+            rankedSuggestions.sort(
+                (a, b) =>
+                    b.matchedIngredients.length -
+                    a.matchedIngredients.length ||
+                    a.strMeal.localeCompare(b.strMeal),
+            );
+
+            setSuggestions(
+                rankedSuggestions.slice(0, MAX_DISPLAYED_RECIPES),
+            );
 
             if (failedCount > 0) {
                 setError(
-                    "Some ingredient searches failed. Showing the recipes we could retrieve.",
+                    "Some ingredient searches failed. Showing verified recipe matches from the searches that succeeded.",
                 );
+            } else {
+                setError(null);
             }
         } catch (searchError) {
             console.error("Recipe search failed:", searchError);
+
             setError(
                 "Something went wrong while finding recipes. Please try again.",
             );
@@ -318,9 +597,8 @@ export default function RecipesScreen() {
                                     </View>
 
                                     <Text className="mt-3 text-xs leading-5 text-amber-900">
-                                        We'll search up to six distinct
-                                        ingredients, prioritizing those
-                                        with the nearest expiry dates.
+                                        We'll search up to twelve distinct ingredients,
+                                        prioritizing those with the nearest expiry dates.
                                     </Text>
                                 </>
                             )}
