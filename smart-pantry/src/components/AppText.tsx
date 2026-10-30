@@ -1,5 +1,6 @@
+
 import {
-    Text,
+    Text as NativeText,
     type TextProps,
     type TextStyle,
 } from "react-native";
@@ -89,7 +90,7 @@ export function AppText({
         .join(" ");
 
     return (
-        <Text
+        <NativeText
             {...props}
             className={finalClassName}
             style={[defaultBodyStyle, style]}

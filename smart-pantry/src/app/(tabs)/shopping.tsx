@@ -1,7 +1,8 @@
 
 import { useMemo, useState } from "react";
-import {ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View,} from "react-native";
+import {ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, TextInput, View,} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { AppText as Text } from "@/components/AppText";
 import {ShoppingBasket, Plus, Circle, CircleCheck, Trash2, Pencil, X, ShoppingCart, PackageCheck,} from "lucide-react-native";
 
 import { useShoppingList } from "@/context/ShoppingListContext";

@@ -6,10 +6,10 @@ import {
     Platform,
     Pressable,
     ScrollView,
-    Text,
     TextInput,
     View,
 } from "react-native";
+import { AppText as Text } from "@/components/AppText";
 import DateTimePicker, {
     DateTimePickerAndroid,
 } from "@react-native-community/datetimepicker";

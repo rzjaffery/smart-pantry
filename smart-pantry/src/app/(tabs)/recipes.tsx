@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import {ActivityIndicator, FlatList, Pressable, Text, View,} from "react-native";
+import {ActivityIndicator, FlatList, Pressable, View,} from "react-native";
+import { AppText as Text } from "@/components/AppText";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import {ArrowRight, CalendarClock, ChefHat, Clock, Plus, ShieldAlert, Utensils,} from "lucide-react-native";
