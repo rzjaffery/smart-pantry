@@ -1,31 +1,54 @@
-
 import { useMemo, useState } from "react";
-import {
-    ActivityIndicator,
-    FlatList,
-    Pressable,
-    Text,
-    View,
-} from "react-native";
+import {ActivityIndicator, FlatList, Pressable, Text, View,} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import {
-    ArrowRight,
-    CalendarClock,
-    ChefHat,
-    Clock,
-    Plus,
-    ShieldAlert,
-    Utensils,
-} from "lucide-react-native";
-
+import {ArrowRight, CalendarClock, ChefHat, Clock, Plus, ShieldAlert, Utensils,} from "lucide-react-native";
 import { usePantry } from "@/context/PantryContext";
 import { daysUntilExpiry } from "@/lib/expiry";
 import { LOCAL_RECIPE_CATALOG } from "@/features/recipes/recipeCatalog";
 import { rankRecipesForPantry } from "@/features/recipes/recipeMatcher";
 import { HALAL_RECIPE_NOTICE } from "@/features/recipes/recipeTypes";
-
 import type { LocalRecipeMatch } from "@/features/recipes/recipeTypes";
+
+type RecipeCategory = | "all" | "breakfast" | "lunch" | "dinner" | "snack" | "dessert" | "drink";
+type RecipeMatchFilter = | "any" | "two" | "three" | "complete";
+
+const CATEGORY_OPTIONS: {value: RecipeCategory; label: string; }[] = [
+    { value: "all", label: "All" },
+    { value: "breakfast", label: "Breakfast" },
+    { value: "lunch", label: "Lunch" },
+    { value: "dinner", label: "Dinner" },
+    { value: "snack", label: "Snacks" },
+    { value: "dessert", label: "Desserts" },
+    { value: "drink", label: "Drinks" },
+];
+
+const MATCH_OPTIONS: {value: RecipeMatchFilter; label: string; }[] = [
+    { value: "any", label: "Any match" },
+    { value: "two", label: "2+ ingredients" },
+    { value: "three", label: "3+ ingredients" },
+    { value: "complete", label: "Complete recipe" },
+];
+
+function RecipeFilterChip({label, selected, onPress}:{label: string, selected: boolean, onPress: () => void}){
+    return(
+        <Pressable
+            accessibilityRole='button'
+            accessibilityState={{selected}}
+            onPress={onPress}
+            className={`rounded-full border px-3 py-2 ${selected
+            ?"border-emerald-700 bg-emerald-700"
+            :"border-slate-200 bg-white"}`}>
+
+            <Text
+                className={`text-sm font-semibold ${
+                    selected ? "text-white" : "text-slate-700"
+                }`}>
+                {label}
+            </Text>
+        </Pressable>
+    )
+}
 
 export default function RecipesScreen() {
     const router = useRouter();
@@ -35,6 +58,9 @@ export default function RecipesScreen() {
 
     const [suggestions, setSuggestions] = useState<LocalRecipeMatch[]>([]);
     const [hasSearched, setHasSearched] = useState(false);
+    const [selectedCategory, setSelectedCategory] = useState<RecipeCategory>("all");
+    const [matchFilter, setMatchFilter] = useState<RecipeMatchFilter>("any");
+    const [filtersExpanded, setFiltersExpanded] = useState(false);
 
     // Never use expired items to recommend a recipe.
     const usablePantryItems = useMemo(
@@ -56,6 +82,25 @@ export default function RecipesScreen() {
                 ),
         [usablePantryItems],
     );
+
+    const visibleSuggestions = useMemo(
+        () => {
+            return suggestions.filter((match) => {
+                const matchesCategory = selectedCategory === "all" || match.recipe.tags.includes(selectedCategory);
+
+                let matchesQuality = true;
+
+                if (matchFilter === 'two')
+                    matchesQuality = match.matchedCount >= 2;
+                else if (matchFilter === 'three')
+                    matchesQuality = match.matchedCount >=3;
+                else if (matchFilter === 'complete')
+                    matchesQuality = match.missingIngredients.length === 0;
+
+                return matchesCategory && matchesQuality;
+            });
+        },[suggestions, selectedCategory, matchFilter]
+    )
 
     function findRecipes() {
         if (usablePantryItems.length === 0) {
@@ -98,7 +143,7 @@ export default function RecipesScreen() {
         >
             <FlatList
                 className="flex-1"
-                data={suggestions}
+                data={visibleSuggestions}
                 keyExtractor={(match) => match.recipe.id}
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{
@@ -239,22 +284,125 @@ export default function RecipesScreen() {
                         </Pressable>
 
                         {/* Results heading */}
+
+                        {/* Recipe filters and results */}
                         {suggestions.length > 0 ? (
                             <View className="mt-7">
-                                <Text className="text-xl font-bold text-slate-900">
-                                    Recipe ideas
-                                </Text>
+                                <View className="flex-row items-center justify-between">
+                                    <View className="flex-1 pr-3">
+                                        <Text className="text-xl font-bold text-slate-900">
+                                            Recipe ideas
+                                        </Text>
 
-                                <Text className="mt-1 text-sm leading-5 text-slate-500">
-                                    Ranked by expiring ingredients first, then
-                                    by the number of pantry ingredients used.
-                                </Text>
+                                        <Text className="mt-1 text-sm text-slate-500">
+                                            {visibleSuggestions.length} of {suggestions.length} recipes
+                                        </Text>
+                                    </View>
+                                </View>
 
-                                <Text className="mt-1 text-xs text-slate-500">
-                                    {suggestions.length} matching recipes
-                                </Text>
+                                {/* Collapsible filters */}
+                                <View className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                                    <Pressable
+                                        accessibilityRole="button"
+                                        accessibilityState={{ expanded: filtersExpanded }}
+                                        onPress={() =>
+                                            setFiltersExpanded((current) => !current)
+                                        }
+                                        className="flex-row items-center justify-between p-4"
+                                    >
+                                        <View className="flex-1 pr-3">
+                                            <Text className="font-bold text-slate-900">
+                                                Filter recipes
+                                            </Text>
+
+                                            <Text className="mt-1 text-xs text-slate-500">
+                                                {CATEGORY_OPTIONS.find(
+                                                    (option) =>
+                                                        option.value === selectedCategory,
+                                                )?.label}
+                                                {" · "}
+                                                {MATCH_OPTIONS.find(
+                                                    (option) =>
+                                                        option.value === matchFilter,
+                                                )?.label}
+                                            </Text>
+                                        </View>
+
+                                        <Text className="text-sm font-semibold text-emerald-700">
+                                            {filtersExpanded ? "Close −" : "Open +"}
+                                        </Text>
+                                    </Pressable>
+
+                                    {filtersExpanded && (
+                                        <View className="gap-5 border-t border-slate-100 p-4">
+                                            <View>
+                                                <Text className="text-sm font-bold text-slate-800">
+                                                    Meal category
+                                                </Text>
+
+                                                <View className="mt-3 flex-row flex-wrap gap-2">
+                                                    {CATEGORY_OPTIONS.map((option) => (
+                                                        <RecipeFilterChip
+                                                            key={option.value}
+                                                            label={option.label}
+                                                            selected={
+                                                                selectedCategory === option.value
+                                                            }
+                                                            onPress={() =>
+                                                                setSelectedCategory(option.value)
+                                                            }
+                                                        />
+                                                    ))}
+                                                </View>
+                                            </View>
+
+                                            <View>
+                                                <Text className="text-sm font-bold text-slate-800">
+                                                    Ingredient availability
+                                                </Text>
+
+                                                <View className="mt-3 flex-row flex-wrap gap-2">
+                                                    {MATCH_OPTIONS.map((option) => (
+                                                        <RecipeFilterChip
+                                                            key={option.value}
+                                                            label={option.label}
+                                                            selected={matchFilter === option.value}
+                                                            onPress={() =>
+                                                                setMatchFilter(option.value)
+                                                            }
+                                                        />
+                                                    ))}
+                                                </View>
+                                            </View>
+
+                                            <Pressable
+                                                accessibilityRole="button"
+                                                onPress={() => {
+                                                    setSelectedCategory("all");
+                                                    setMatchFilter("any");
+                                                }}
+                                                className="self-start py-2"
+                                            >
+                                                <Text className="font-semibold text-emerald-700">
+                                                    Reset recipe filters
+                                                </Text>
+                                            </Pressable>
+
+                                            <Pressable
+                                                accessibilityRole="button"
+                                                onPress={() => setFiltersExpanded(false)}
+                                                className="items-center rounded-xl bg-slate-100 px-4 py-3"
+                                            >
+                                                <Text className="font-semibold text-slate-700">
+                                                    Done
+                                                </Text>
+                                            </Pressable>
+                                        </View>
+                                    )}
+                                </View>
                             </View>
                         ) : null}
+
                     </View>
                 }
                 renderItem={({ item: match }) => {
@@ -382,39 +530,38 @@ export default function RecipesScreen() {
                         </View>
 
                         <Text className="mt-4 text-center text-lg font-bold text-slate-900">
-                            {!hasSearched
-                                ? usablePantryItems.length > 0
+                            {hasSearched
+                                ? suggestions.length > 0
+                                    ? "No recipes match these filters"
+                                    : "No matching recipes yet"
+                                : usablePantryItems.length > 0
                                     ? "Ready to find a recipe?"
-                                    : pantryItems.length === 0
-                                        ? "Your pantry is empty"
-                                        : "No usable ingredients"
-                            : "No matching recipes yet"}
+                                    : "Your pantry is empty"}
                         </Text>
 
                         <Text className="mt-2 text-center text-sm leading-6 text-slate-500">
-                            {!hasSearched
-                                ? usablePantryItems.length > 0
-                                    ? "Tap Find recipes to match your ingredients against the local catalogue."
-                                    : pantryItems.length === 0
-                                        ? "Add pantry items to discover recipes that use them."
-                                        : "Your saved items are expired. Add or update ingredients to find recipes using usable food."
-                                : "The current local catalogue may not contain a recipe for these ingredients yet. You can expand it by adding more recipe entries."}
+                            {hasSearched && suggestions.length > 0
+                                ? "Try selecting another meal category or reducing the ingredient match requirement."
+                                : hasSearched
+                                    ? "The local catalogue does not currently have a recipe matching your ingredients."
+                                    : "Add pantry items to discover recipes that use them."}
                         </Text>
 
-                        {!hasSearched &&
-                        usablePantryItems.length === 0 ? (
+                        {hasSearched && suggestions.length > 0 && (
                             <Pressable
                                 accessibilityRole="button"
-                                onPress={() => router.push("/add-item")}
-                                className="mt-5 min-h-12 flex-row items-center justify-center gap-2 rounded-xl bg-emerald-700 px-5 py-3"
+                                onPress={() => {
+                                    setSelectedCategory("all");
+                                    setMatchFilter("any");
+                                    setFiltersExpanded(false);
+                                }}
+                                className="mt-5 rounded-xl bg-emerald-700 px-5 py-3"
                             >
-                                <Plus size={18} color="#FFFFFF" />
-
                                 <Text className="font-bold text-white">
-                                    Add pantry item
+                                    Reset recipe filters
                                 </Text>
                             </Pressable>
-                        ) : null}
+                        )}
 
                         {hasSearched && usablePantryItems.length > 0 ? (
                             <Pressable
