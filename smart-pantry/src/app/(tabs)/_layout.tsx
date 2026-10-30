@@ -16,14 +16,13 @@ export default function TabsLayout() {
         <Tabs
             screenOptions={{
                 headerShown: false,
-                tabBarActiveTintColor: "#047857",
-                tabBarInactiveTintColor: "#64748b",
+
+                tabBarActiveTintColor: "#556B2F",
+                tabBarInactiveTintColor: "#746861",
 
                 tabBarStyle: {
-                    backgroundColor: "#ffffff",
-                    borderTopColor: "#e2e8f0",
-
-                    // Reserve enough room for the system navigation area.
+                    backgroundColor: "#FFFFFF",
+                    borderTopColor: "#E8E0D6",
                     height: 64 + insets.bottom,
                     paddingTop: 6,
                     paddingBottom: 8 + insets.bottom,
@@ -35,7 +34,7 @@ export default function TabsLayout() {
                 },
 
                 sceneStyle: {
-                    backgroundColor: "#f8fafc",
+                    backgroundColor: "#F9F6F0",
                 },
             }}
         >

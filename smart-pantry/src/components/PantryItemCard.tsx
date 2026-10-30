@@ -1,6 +1,5 @@
 
 import { View } from "react-native";
-import { AppText as Text } from "@/components/AppText";
 import {
     AlertCircle,
     CalendarDays,
@@ -8,6 +7,7 @@ import {
     Clock,
 } from "lucide-react-native";
 
+import { AppText as Text } from "@/components/AppText";
 import type { PantryItem } from "@/types/pantry";
 import {
     daysUntilExpiry,
@@ -32,47 +32,45 @@ export function PantryItemCard({ item }: PantryItemCardProps) {
             : CheckCircle2;
 
     const statusColor = expired
-        ? "#BE123C"
+        ? "#8F4933"
         : expiringSoon
-            ? "#B45309"
-            : "#047857";
+            ? "#C26D4C"
+            : "#556B2F";
 
     const accentClass = expired
-        ? "bg-rose-500"
+        ? "bg-larder-terracotta-deep"
         : expiringSoon
-            ? "bg-amber-500"
-            : "bg-emerald-500";
+            ? "bg-larder-terracotta"
+            : "bg-larder-olive";
 
-    const borderClass = expired
-        ? "border-rose-200"
-        : expiringSoon
-            ? "border-amber-200"
-            : "border-emerald-200";
+    const borderClass = expired || expiringSoon
+        ? "border-larder-terracotta-soft"
+        : "border-larder-border";
 
-    const iconBackgroundClass = expired
-        ? "bg-rose-50"
-        : expiringSoon
-            ? "bg-amber-50"
-            : "bg-emerald-50";
+    const iconBackgroundClass = expired || expiringSoon
+        ? "bg-larder-terracotta-soft"
+        : "bg-larder-olive-soft";
 
     return (
         <View
-            className={`overflow-hidden rounded-2xl border bg-white ${borderClass}`}
+            className={`overflow-hidden rounded-2xl border bg-larder-alabaster ${borderClass}`}
         >
             <View className="flex-row">
+                {/* Status accent */}
                 <View className={`w-1.5 ${accentClass}`} />
 
                 <View className="min-w-0 flex-1 p-4">
+                    {/* Item information */}
                     <View className="flex-row items-start justify-between gap-3">
                         <View className="min-w-0 flex-1">
                             <Text
                                 numberOfLines={2}
-                                className="text-base font-bold leading-6 text-slate-900"
+                                className="text-base font-bold leading-6 tracking-display text-larder-espresso"
                             >
                                 {item.name}
                             </Text>
 
-                            <Text className="mt-1 text-base font-semibold text-slate-700">
+                            <Text className="mt-1 text-base font-medium text-larder-olive">
                                 {item.quantity} {item.unit}
                             </Text>
                         </View>
@@ -82,44 +80,53 @@ export function PantryItemCard({ item }: PantryItemCardProps) {
                         </View>
                     </View>
 
-                    <View className="mt-4 flex-row gap-x-4 gap-y-3 border-t border-slate-100 pt-3">
-                        <View className="flex-row items-center gap-2">
+                    {/* Storage and expiry information */}
+                    <View className="mt-4 flex-row flex-wrap gap-x-4 gap-y-3 border-t border-larder-border pt-3">
+                        {/* Storage location */}
+                        <View className="min-w-0 flex-1 flex-row items-center gap-2">
                             <View
-                                className={`h-9 w-9 items-center justify-center rounded-lg ${iconBackgroundClass}`}
+                                className={`h-9 w-9 shrink-0 items-center justify-center rounded-xl ${iconBackgroundClass}`}
                             >
                                 <StatusIcon
-                                    size={19}
+                                    size={18}
                                     color={statusColor}
                                     strokeWidth={2}
                                 />
                             </View>
 
-                            <View className="flex-2">
-                                <Text className="text-xs text-slate-500">
+                            <View className="min-w-0 flex-1">
+                                <Text className="text-xs text-larder-muted">
                                     Storage location
                                 </Text>
 
-                                <Text className="mt-0.5 text-sm font-semibold text-slate-800">
+                                <Text
+                                    numberOfLines={1}
+                                    className="mt-0.5 text-sm font-semibold text-larder-espresso"
+                                >
                                     {item.location}
                                 </Text>
                             </View>
                         </View>
 
-                        <View className="flex-row items-center gap-2">
-                            <View className="h-9 w-9 items-center justify-center rounded-lg bg-slate-100">
+                        {/* Expiry date */}
+                        <View className="min-w-0 flex-1 flex-row items-center gap-2">
+                            <View className="h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-larder-olive-soft">
                                 <CalendarDays
                                     size={18}
-                                    color="#475569"
+                                    color="#556B2F"
                                     strokeWidth={1.8}
                                 />
                             </View>
 
-                            <View>
-                                <Text className="text-xs text-slate-500">
+                            <View className="min-w-0 flex-1">
+                                <Text className="text-xs text-larder-muted">
                                     Expiry date
                                 </Text>
 
-                                <Text className="mt-0.5 text-sm font-semibold text-slate-800">
+                                <Text
+                                    numberOfLines={1}
+                                    className="mt-0.5 text-sm font-semibold text-larder-espresso"
+                                >
                                     {formatExpiryDate(item.expiryDate)}
                                 </Text>
                             </View>
