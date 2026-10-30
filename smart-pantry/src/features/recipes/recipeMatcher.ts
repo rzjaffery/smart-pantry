@@ -70,6 +70,40 @@ const INGREDIENT_ALIASES: Record<string, string> = {
 
     "bread slices": "bread",
     "baking powder": "baking powder",
+
+    "masoor": "masoor dal",
+    "red lentils": "masoor dal",
+    "red lentil": "masoor dal",
+
+    "besan": "gram flour",
+    "chickpea flour": "gram flour",
+
+    "dhania": "coriander leaves",
+    "dhania leaves": "coriander leaves",
+    "cilantro": "coriander leaves",
+
+    "gobi": "cauliflower",
+    "cauliflowers": "cauliflower",
+
+    "basmati rice": "rice",
+    "cooked rice": "rice",
+
+    "green chili": "chili",
+    "green chilies": "chili",
+    "green chillies": "chili",
+
+    "jeera": "cumin",
+    "cumin seeds": "cumin",
+    "zeera": "cumin",
+
+    "haldi": "turmeric",
+    "doodh": "milk",
+
+    "pyaaz": "onion",
+    "pyaz": "onion",
+    "tamatar": "tomato",
+    "adrak": "ginger",
+    "lehsan": "garlic",
 };
 
 export function normalizeIngredientKey(name: string): string {

@@ -219,3 +219,65 @@ describe("rankRecipesForPantry", () => {
         );
     });
 });
+
+describe("South Asian local recipes", () => {
+    test("finds masoor dal using common pantry ingredients", () => {
+        const results = rankRecipesForPantry(
+            [
+                pantryItem("Masoor Dal"),
+                pantryItem("Tomatoes"),
+                pantryItem("Onion"),
+                pantryItem("Garlic"),
+            ],
+        );
+
+        const dal = results.find(
+            (match) => match.recipe.id === "masoor-dal-tadka",
+        );
+
+        expect(dal).toBeDefined();
+        expect(dal?.matchedCount).toBeGreaterThanOrEqual(3);
+    });
+
+    test("finds recipes using besan", () => {
+        const results = rankRecipesForPantry([
+            pantryItem("Besan"),
+            pantryItem("Onion"),
+            pantryItem("Tomato"),
+        ]);
+
+        expect(
+            results.some(
+                (match) => match.recipe.id === "besan-chilla",
+            ),
+        ).toBe(true);
+    });
+
+    test("recognizes basmati rice as rice", () => {
+        const results = rankRecipesForPantry([
+            pantryItem("Basmati rice"),
+            pantryItem("Cumin"),
+        ]);
+
+        expect(
+            results.some(
+                (match) => match.recipe.id === "jeera-rice",
+            ),
+        ).toBe(true);
+    });
+
+    test("finds kheer using milk and rice", () => {
+        const results = rankRecipesForPantry([
+            pantryItem("Milk"),
+            pantryItem("Rice"),
+            pantryItem("Sugar"),
+        ]);
+
+        const kheer = results.find(
+            (match) => match.recipe.id === "rice-kheer",
+        );
+
+        expect(kheer).toBeDefined();
+        expect(kheer?.matchedCount).toBe(3);
+    });
+});
