@@ -1,6 +1,6 @@
-
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
+    Alert,
     Pressable,
     ScrollView,
     Text,
@@ -17,19 +17,27 @@ import {
     Info,
     ShieldAlert,
     ShoppingBasket,
+    ShoppingCart,
     Users,
 } from "lucide-react-native";
 
 import { usePantry } from "@/context/PantryContext";
+import { useShoppingList } from "@/context/ShoppingListContext";
 import { daysUntilExpiry } from "@/lib/expiry";
 import { LOCAL_RECIPE_CATALOG } from "@/features/recipes/recipeCatalog";
 import { isIngredientAvailable } from "@/features/recipes/recipeMatcher";
-import { HALAL_RECIPE_NOTICE } from "@/features/recipes/recipeTypes";
+import {
+    HALAL_RECIPE_NOTICE,
+} from "@/features/recipes/recipeTypes";
 
 export default function RecipeDetailScreen() {
     const router = useRouter();
     const params = useLocalSearchParams<{ id: string }>();
+
     const { items } = usePantry();
+    const { addItems } = useShoppingList();
+
+    const [isAddingToShopping, setIsAddingToShopping] = useState(false);
 
     const recipe = useMemo(
         () =>
@@ -47,33 +55,108 @@ export default function RecipeDetailScreen() {
         [items],
     );
 
+    const missingIngredients = useMemo(() => {
+        if (!recipe) {
+            return [];
+        }
+
+        return recipe.ingredients.filter((ingredient) => {
+            if (ingredient.optional) {
+                return false;
+            }
+
+            return !isIngredientAvailable(
+                ingredient,
+                usablePantryItems,
+            );
+        });
+    }, [recipe, usablePantryItems]);
+
+    async function handleAddMissingIngredients() {
+        if (!recipe || missingIngredients.length === 0 || isAddingToShopping) {
+            return;
+        }
+
+        setIsAddingToShopping(true);
+
+        try {
+            await addItems(
+                missingIngredients.map((ingredient) => ({
+                    name: ingredient.name,
+                    amount: ingredient.amount,
+                    sourceRecipeId: recipe.id,
+                })),
+            );
+
+            Alert.alert(
+                "Shopping list updated",
+                `${missingIngredients.length} missing ingredient${
+                    missingIngredients.length === 1 ? " has" : "s have"
+                } been added or merged into your shopping list.`,
+                [
+                    {
+                        text: "View shopping list",
+                        onPress: () => router.push("/shopping"),
+                    },
+                    {
+                        text: "Continue cooking",
+                        style: "cancel",
+                    },
+                ],
+            );
+        } catch (error) {
+            console.error(
+                "Failed to add missing recipe ingredients:",
+                error,
+            );
+
+            Alert.alert(
+                "Couldn't update shopping list",
+                error instanceof Error
+                    ? error.message
+                    : "Please try again.",
+            );
+        } finally {
+            setIsAddingToShopping(false);
+        }
+    }
+
     if (!recipe) {
         return (
             <SafeAreaView
                 className="flex-1 items-center justify-center bg-slate-50 px-6"
                 edges={["top", "bottom"]}
             >
-                <ChefHat size={36} color="#047857" />
+                <View className="items-center">
+                    <Info
+                        size={36}
+                        color="#64748B"
+                    />
 
-                <Text className="mt-4 text-xl font-bold text-slate-900">
-                    Recipe not found
-                </Text>
-
-                <Text className="mt-2 text-center text-sm leading-6 text-slate-500">
-                    This recipe isn't in the current local catalogue.
-                </Text>
-
-                <Pressable
-                    accessibilityRole="button"
-                    onPress={() => router.back()}
-                    className="mt-5 flex-row items-center gap-2 rounded-xl bg-emerald-700 px-5 py-3"
-                >
-                    <ArrowLeft size={18} color="#FFFFFF" />
-
-                    <Text className="font-bold text-white">
-                        Back to recipes
+                    <Text className="mt-4 text-xl font-bold text-slate-900">
+                        Recipe not found
                     </Text>
-                </Pressable>
+
+                    <Text className="mt-2 text-center text-sm leading-6 text-slate-600">
+                        This recipe may have been removed or is no longer
+                        available.
+                    </Text>
+
+                    <Pressable
+                        accessibilityRole="button"
+                        onPress={() => router.back()}
+                        className="mt-6 min-h-12 flex-row items-center justify-center gap-2 rounded-xl bg-emerald-700 px-5 py-3"
+                    >
+                        <ArrowLeft
+                            size={18}
+                            color="#FFFFFF"
+                        />
+
+                        <Text className="font-bold text-white">
+                            Back to recipes
+                        </Text>
+                    </Pressable>
+                </View>
             </SafeAreaView>
         );
     }
@@ -270,6 +353,58 @@ export default function RecipeDetailScreen() {
                     </View>
                 </View>
 
+                {/* Add missing ingredients to shopping list */}
+                <View className="mt-5">
+                    {missingIngredients.length > 0 ? (
+                        <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel="Add missing ingredients to shopping list"
+                            disabled={isAddingToShopping}
+                            onPress={() => {
+                                void handleAddMissingIngredients();
+                            }}
+                            className={`min-h-14 flex-row items-center justify-center gap-2 rounded-2xl px-5 py-4 ${
+                                isAddingToShopping
+                                    ? "bg-emerald-500"
+                                    : "bg-emerald-700"
+                            }`}
+                        >
+                            {isAddingToShopping ? (
+                                <Text className="font-bold text-white">
+                                    Updating shopping list...
+                                </Text>
+                            ) : (
+                                <>
+                                    <ShoppingCart
+                                        size={20}
+                                        color="#FFFFFF"
+                                        strokeWidth={2}
+                                    />
+
+                                    <Text className="font-bold text-white">
+                                        Add {missingIngredients.length} missing
+                                        ingredient
+                                        {missingIngredients.length === 1
+                                            ? ""
+                                            : "s"}
+                                    </Text>
+                                </>
+                            )}
+                        </Pressable>
+                    ) : (
+                        <View className="flex-row items-center justify-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4">
+                            <CheckCircle2
+                                size={20}
+                                color="#047857"
+                            />
+
+                            <Text className="font-semibold text-emerald-800">
+                                You already have all required ingredients!
+                            </Text>
+                        </View>
+                    )}
+                </View>
+
                 {/* Cooking instructions */}
                 <View className="mt-8">
                     <Text className="text-xl font-bold text-slate-900">
@@ -310,6 +445,7 @@ export default function RecipeDetailScreen() {
                     </Text>
                 </View>
 
+                {/* Bottom back button */}
                 <Pressable
                     accessibilityRole="button"
                     onPress={() => router.back()}
