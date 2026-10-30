@@ -6,6 +6,7 @@ import {ShoppingBasket, Plus, Circle, CircleCheck, Trash2, Pencil, X, ShoppingCa
 
 import { useShoppingList } from "@/context/ShoppingListContext";
 import type { ShoppingListItem } from "@/types/shopping";
+import {TransferPurchasedItem} from "@/components/TransferPurchasedItem";
 
 export default function ShoppingScreen() {
     const {
@@ -471,6 +472,7 @@ export default function ShoppingScreen() {
                                                 : "recipes"}
                                         </Text>
                                     ) : null}
+                                    <TransferPurchasedItem item={item} />
                                 </View>
 
                                 {/* Edit and delete actions */}
