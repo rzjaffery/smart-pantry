@@ -1,4 +1,3 @@
-
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: ["./src/**/*.{js,jsx,ts,tsx}"],
@@ -24,15 +23,15 @@ module.exports = {
       },
 
       fontFamily: {
-        sans: ["Satoshi"],
+        sans: ["Satoshi-Regular"],
+        satoshi: ["Satoshi-Regular"],
+        "satoshi-medium": ["Satoshi-Medium"],
+        "satoshi-bold": ["Satoshi-Bold"],
+        "satoshi-black": ["Satoshi-Black"],
       },
 
       letterSpacing: {
         display: "-0.02em",
-      },
-
-      lineHeight: {
-        body: "1.4",
       },
     },
   },
